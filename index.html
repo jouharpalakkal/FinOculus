@@ -3,202 +3,237 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinOculus | Personal Finance</title>
-    
-    <!-- 1. Tailwind CSS for Styling -->
+    <title>FinOculus V2</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 2. Supabase JS Client (The Database Connector) -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    
-    <!-- 3. Chart.js for Visuals -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 
-    <!-- Custom Styles for Scrollbars and transitions -->
     <style>
-        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
-        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        /* Hide scrollbar for Chrome/Safari/Opera */
+        body { background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); }
+        .card-gradient { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
     </style>
 </head>
-<body class="text-gray-800 h-screen overflow-hidden flex flex-col">
+<body class="text-slate-800 h-screen overflow-hidden flex flex-col">
 
-    <!-- CONFIGURATION MODAL (Runs on first load if keys are missing) -->
-    <div id="configModal" class="fixed inset-0 bg-gray-900 bg-opacity-90 z-50 flex items-center justify-center hidden">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-4 text-blue-600">Connect to Cloud</h2>
-            <p class="text-sm text-gray-500 mb-6">Enter your Supabase URL and Anon Key to start.</p>
-            <input type="text" id="inputUrl" placeholder="Supabase Project URL" class="w-full p-3 border rounded mb-3 bg-gray-50">
-            <input type="text" id="inputKey" placeholder="Supabase Anon Key" class="w-full p-3 border rounded mb-6 bg-gray-50">
-            <button onclick="saveConfig()" class="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 font-bold transition">Connect</button>
+    <!-- CONFIG MODAL -->
+    <div id="configModal" class="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-2 text-slate-800">Setup Cloud</h2>
+            <p class="text-sm text-slate-500 mb-6">Enter your Supabase credentials to sync data.</p>
+            <input type="text" id="inputUrl" placeholder="Project URL" class="w-full p-3 border rounded-xl mb-3 bg-slate-50">
+            <input type="text" id="inputKey" placeholder="Anon Key" class="w-full p-3 border rounded-xl mb-6 bg-slate-50">
+            <button onclick="saveConfig()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">Connect</button>
         </div>
     </div>
 
     <!-- AUTH SCREEN -->
-    <div id="authScreen" class="fixed inset-0 z-40 bg-gray-100 flex items-center justify-center hidden">
-        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center fade-in">
-            <div class="mb-6">
-                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </div>
-                <h1 class="text-2xl font-bold tracking-tight">FinOculus</h1>
-                <p class="text-gray-500 text-sm">Sign in to sync your finances</p>
+    <div id="authScreen" class="fixed inset-0 z-40 bg-slate-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm text-center">
+            <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
+                <i class="ri-wallet-3-line text-3xl"></i>
             </div>
-            <input type="email" id="email" placeholder="Email" class="w-full p-3 border rounded-lg mb-3 outline-none focus:ring-2 focus:ring-blue-500">
-            <input type="password" id="password" placeholder="Password" class="w-full p-3 border rounded-lg mb-6 outline-none focus:ring-2 focus:ring-blue-500">
-            <div class="flex gap-2">
-                <button onclick="handleAuth('LOGIN')" class="flex-1 bg-gray-800 text-white py-3 rounded-lg hover:bg-black transition">Log In</button>
-                <button onclick="handleAuth('SIGNUP')" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">Sign Up</button>
-            </div>
-            <p id="authMsg" class="mt-4 text-xs text-red-500 min-h-[20px]"></p>
+            <h1 class="text-2xl font-bold mb-1">FinOculus V2</h1>
+            <p class="text-slate-400 text-sm mb-6">Multi-Account Finance Tracker</p>
+            <input type="email" id="email" placeholder="Email" class="w-full p-4 border rounded-xl mb-3 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="password" id="password" placeholder="Password" class="w-full p-4 border rounded-xl mb-6 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500">
+            <button onclick="handleAuth('LOGIN')" class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition mb-2">Log In</button>
+            <button onclick="handleAuth('SIGNUP')" class="w-full text-blue-600 font-bold py-2 hover:underline">Create Account</button>
+            <p id="authMsg" class="mt-4 text-xs text-red-500"></p>
         </div>
     </div>
 
-    <!-- MAIN APP INTERFACE -->
-    <div id="appInterface" class="flex-1 flex flex-col h-full hidden">
+    <!-- APP INTERFACE -->
+    <div id="appInterface" class="flex-1 flex flex-col h-full hidden relative">
         
-        <!-- Navbar -->
-        <nav class="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm z-10">
-            <div class="font-bold text-xl tracking-tight text-blue-900 flex items-center gap-2">
-                <span class="text-2xl">👁️</span> FinOculus
+        <!-- Top Nav -->
+        <nav class="bg-white border-b px-6 py-3 flex justify-between items-center z-10">
+            <div class="flex items-center gap-2 text-slate-900 font-bold text-xl">
+                <i class="ri-wallet-3-fill text-blue-600"></i> FinOculus
             </div>
-            <div class="flex items-center gap-4">
-                <span id="userEmail" class="text-sm text-gray-500 hidden md:block"></span>
-                <button onclick="logout()" class="text-sm text-red-500 font-medium hover:text-red-700">Sign Out</button>
-            </div>
+            <button onclick="logout()" class="text-sm text-red-500 font-medium hover:bg-red-50 px-3 py-1 rounded-lg">Sign Out</button>
         </nav>
 
-        <!-- Content Area -->
-        <div class="flex-1 overflow-hidden flex flex-col md:flex-row">
+        <div class="flex-1 flex overflow-hidden">
             
-            <!-- Left: Dashboard & Charts -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-8">
-                <!-- KPI Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
-                        <p class="text-gray-500 text-xs font-bold uppercase tracking-wider">Income</p>
-                        <h3 class="text-2xl font-bold text-gray-800 mt-1" id="displayIncome">$0.00</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500">
-                        <p class="text-gray-500 text-xs font-bold uppercase tracking-wider">Expenses</p>
-                        <h3 class="text-2xl font-bold text-gray-800 mt-1" id="displayExpense">$0.00</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-600">
-                        <p class="text-gray-500 text-xs font-bold uppercase tracking-wider">Net Balance</p>
-                        <h3 class="text-2xl font-bold text-gray-800 mt-1" id="displayBalance">$0.00</h3>
+            <!-- MAIN CONTENT (Dashboard) -->
+            <main class="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8">
+                
+                <!-- Accounts Section -->
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="text-lg font-bold text-slate-700">My Accounts</h2>
+                    <button onclick="openAccountModal()" class="text-sm text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-lg hover:bg-blue-100">+ Add Account</button>
+                </div>
+
+                <!-- Accounts Horizontal Scroll -->
+                <div class="flex gap-4 overflow-x-auto pb-4 mb-6 no-scrollbar" id="accountsList">
+                    <!-- Populated by JS -->
+                    <div class="min-w-[280px] h-40 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-blue-400 hover:text-blue-500 transition" onclick="openAccountModal()">
+                        <i class="ri-add-circle-line text-3xl mb-1"></i>
+                        <span class="font-medium">Add First Account</span>
                     </div>
                 </div>
 
-                <!-- Charts Area -->
-                <div class="bg-white p-6 rounded-xl shadow-sm mb-8 h-64 md:h-80 w-full relative">
-                    <h3 class="text-lg font-bold mb-4 text-gray-700">Cash Flow Analytics</h3>
-                    <canvas id="financeChart"></canvas>
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                        <p class="text-xs text-slate-400 font-bold uppercase">Net Worth</p>
+                        <h3 class="text-xl font-bold text-slate-800 mt-1" id="totalNetWorth">$0.00</h3>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                        <p class="text-xs text-slate-400 font-bold uppercase">Income (Mo)</p>
+                        <h3 class="text-xl font-bold text-green-600 mt-1" id="monthIncome">$0.00</h3>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                        <p class="text-xs text-slate-400 font-bold uppercase">Expense (Mo)</p>
+                        <h3 class="text-xl font-bold text-red-500 mt-1" id="monthExpense">$0.00</h3>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                        <p class="text-xs text-slate-400 font-bold uppercase">Savings (Mo)</p>
+                        <h3 class="text-xl font-bold text-blue-600 mt-1" id="monthSavings">$0.00</h3>
+                    </div>
                 </div>
 
-                <!-- Recent Transactions Mobile List -->
-                <div class="md:hidden">
-                    <h3 class="font-bold text-gray-700 mb-3">Recent Activity</h3>
-                    <div id="mobileList" class="space-y-3 pb-20">
-                        <!-- Populated via JS -->
-                    </div>
+                <!-- Recent Transactions -->
+                <h2 class="text-lg font-bold text-slate-700 mb-4">Recent Activity</h2>
+                <div id="transactionsList" class="space-y-3">
+                    <!-- JS Populated -->
                 </div>
             </main>
 
-            <!-- Right: Sidebar (Add Transaction & Desktop List) -->
-            <aside class="w-full md:w-96 bg-white border-l shadow-xl z-20 flex flex-col absolute md:relative bottom-0 h-3/4 md:h-auto rounded-t-3xl md:rounded-none transform transition-transform duration-300 translate-y-full md:translate-y-0" id="transactionPanel">
+            <!-- RIGHT PANEL (Forms) -->
+            <aside class="fixed md:relative bottom-0 w-full md:w-[450px] bg-white border-l shadow-2xl z-20 rounded-t-3xl md:rounded-none flex flex-col transition-transform duration-300 translate-y-full md:translate-y-0 h-[85vh] md:h-auto" id="actionPanel">
                 
-                <!-- Toggle Handle (Mobile Only) -->
-                <div class="md:hidden w-full h-8 flex items-center justify-center cursor-pointer" onclick="togglePanel()">
-                    <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+                <!-- Mobile Handle -->
+                <div class="md:hidden w-full h-10 flex items-center justify-center cursor-pointer border-b" onclick="togglePanel()">
+                    <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
                 </div>
 
-                <div class="p-6 flex-1 overflow-y-auto">
-                    <h3 class="text-lg font-bold mb-6 text-gray-800">Add Transaction</h3>
+                <div class="flex-1 overflow-y-auto p-6">
                     
-                    <form id="trxForm" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Amount</label>
-                            <input type="number" id="amount" step="0.01" class="w-full text-3xl font-bold text-gray-800 border-b-2 border-gray-200 focus:border-blue-600 outline-none py-2 bg-transparent" placeholder="0.00" required>
+                    <!-- Favorites / Quick Add -->
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase">Quick Templates</h3>
+                            <button onclick="saveAsFavorite()" class="text-xs text-blue-600 hover:underline">Save current as Favorite</button>
                         </div>
-                        
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
-                                <select id="type" class="w-full p-3 bg-gray-50 rounded-lg outline-none" onchange="updateCategories()">
-                                    <option value="Expense">Expense</option>
-                                    <option value="Income">Income</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
-                                <input type="date" id="date" class="w-full p-3 bg-gray-50 rounded-lg outline-none" required>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
-                            <select id="category" class="w-full p-3 bg-gray-50 rounded-lg outline-none">
-                                <!-- Populated by JS -->
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Description</label>
-                            <input type="text" id="desc" class="w-full p-3 bg-gray-50 rounded-lg outline-none" placeholder="e.g. Lunch with client">
-                        </div>
-
-                        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transform active:scale-95 transition">
-                            Add Transaction
-                        </button>
-                    </form>
-
-                    <!-- Desktop Recent List -->
-                    <div class="hidden md:block mt-10">
-                        <h3 class="font-bold text-gray-700 mb-3 border-t pt-6">Recent History</h3>
-                        <div id="desktopList" class="space-y-3 overflow-y-auto h-64 pr-2 no-scrollbar">
-                            <!-- Populated via JS -->
+                        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2" id="favoritesList">
+                            <!-- Populated JS -->
                         </div>
                     </div>
+
+                    <!-- Main Form -->
+                    <h2 class="text-xl font-bold text-slate-800 mb-6">New Transaction</h2>
+                    <form id="trxForm" class="space-y-5">
+                        
+                        <!-- Type Selector -->
+                        <div class="grid grid-cols-4 gap-2 bg-slate-100 p-1 rounded-xl">
+                            <button type="button" onclick="setType('Expense')" class="type-btn active rounded-lg py-2 text-sm font-bold transition text-slate-500 hover:bg-white" data-type="Expense">Exp</button>
+                            <button type="button" onclick="setType('Income')" class="type-btn rounded-lg py-2 text-sm font-bold transition text-slate-500 hover:bg-white" data-type="Income">Inc</button>
+                            <button type="button" onclick="setType('Savings')" class="type-btn rounded-lg py-2 text-sm font-bold transition text-slate-500 hover:bg-white" data-type="Savings">Save</button>
+                            <button type="button" onclick="setType('Transfer')" class="type-btn rounded-lg py-2 text-sm font-bold transition text-slate-500 hover:bg-white" data-type="Transfer">Tfr</button>
+                        </div>
+                        <input type="hidden" id="type" value="Expense">
+
+                        <!-- Amount -->
+                        <div class="relative">
+                            <span class="absolute left-0 top-2 text-slate-400 text-sm font-bold">$</span>
+                            <input type="number" id="amount" step="0.01" class="w-full text-4xl font-bold text-slate-800 border-b-2 border-slate-100 focus:border-blue-600 outline-none py-1 bg-transparent pl-4" placeholder="0.00" required>
+                        </div>
+
+                        <!-- Date -->
+                        <input type="date" id="date" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm font-medium outline-none">
+
+                        <!-- Account Selection -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">From Account</label>
+                                <select id="account" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm outline-none font-medium"></select>
+                            </div>
+                            <div id="toAccountField" class="hidden">
+                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">To Account</label>
+                                <select id="toAccount" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm outline-none font-medium"></select>
+                            </div>
+                        </div>
+
+                        <!-- Category -->
+                        <div id="categoryField">
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label>
+                            <select id="category" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm outline-none font-medium"></select>
+                        </div>
+
+                        <!-- Description -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Note</label>
+                            <input type="text" id="desc" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm outline-none" placeholder="What's this for?">
+                        </div>
+
+                        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transform active:scale-95 transition">
+                            Save Transaction
+                        </button>
+                    </form>
                 </div>
             </aside>
-            
-            <!-- Mobile Floating Action Button -->
-            <button onclick="togglePanel()" class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center text-3xl z-50 hover:bg-blue-700 transition">
-                +
-            </button>
         </div>
+
+        <!-- Add FAB (Mobile) -->
+        <button onclick="togglePanel()" class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl z-30 hover:bg-blue-700 transition">
+            <i class="ri-add-line"></i>
+        </button>
+
+        <!-- ADD ACCOUNT MODAL -->
+        <div id="accountModal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white p-6 rounded-2xl w-full max-w-sm m-4">
+                <h3 class="font-bold text-lg mb-4">Add New Account</h3>
+                <input type="text" id="newAccName" placeholder="Account Name (e.g. Chase)" class="w-full p-3 border rounded-xl mb-3">
+                <select id="newAccType" class="w-full p-3 border rounded-xl mb-3">
+                    <option value="Checking">Checking</option>
+                    <option value="Savings">Savings</option>
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Investment">Investment</option>
+                </select>
+                <input type="number" id="newAccBal" placeholder="Current Balance" class="w-full p-3 border rounded-xl mb-6">
+                <div class="flex gap-2">
+                    <button onclick="document.getElementById('accountModal').classList.add('hidden')" class="flex-1 py-3 text-slate-500 font-bold">Cancel</button>
+                    <button onclick="createAccount()" class="flex-1 bg-blue-600 text-white rounded-xl font-bold">Create</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- LOGIC -->
     <script>
-        // --- 1. INITIALIZATION & CONFIG ---
-        // Change variable name to avoid conflict with library global 'supabase'
+        // CONFIG
         let supabaseClient;
-        const CONFIG_KEY = 'finoculus_config';
-        let chartInstance = null;
-
-        // Categories Map
+        const CONFIG_KEY = 'finoculus_v2_config';
+        
         const CATEGORIES = {
-            'Expense': ['Food & Drink', 'Rent/Mortgage', 'Transport', 'Groceries', 'Utilities', 'Shopping', 'Health', 'Entertainment', 'Other'],
-            'Income': ['Salary', 'Freelance', 'Investments', 'Gifts', 'Other']
+            'Expense': ['Food & Drink', 'Groceries', 'Transport', 'Utilities', 'Shopping', 'Health', 'Home', 'Entertainment', 'Education'],
+            'Income': ['Salary', 'Freelance', 'Business', 'Dividends', 'Gift', 'Refund'],
+            'Savings': ['Emergency Fund', 'Retirement', 'Vacation Goal', 'New Car Fund', 'General Savings', 'Investments'],
+            'Transfer': ['Transfer'] 
         };
 
+        // GLOBAL STATE
+        let accounts = [];
+        let transactions = [];
+        let favorites = [];
+
         window.onload = () => {
-            // Set default date to today
-            document.getElementById('date').valueAsDate = new Date();
-            updateCategories();
-            
-            // Check for saved config
             const savedConfig = JSON.parse(localStorage.getItem(CONFIG_KEY));
-            if (savedConfig && savedConfig.url && savedConfig.key) {
+            if (savedConfig?.url && savedConfig?.key) {
                 initSupabase(savedConfig.url, savedConfig.key);
             } else {
                 document.getElementById('configModal').classList.remove('hidden');
             }
+            document.getElementById('date').valueAsDate = new Date();
+            setType('Expense');
         };
 
         function saveConfig() {
@@ -208,26 +243,23 @@
                 localStorage.setItem(CONFIG_KEY, JSON.stringify({url, key}));
                 initSupabase(url, key);
                 document.getElementById('configModal').classList.add('hidden');
-            } else {
-                alert("Please enter both URL and Key");
             }
         }
 
         function initSupabase(url, key) {
             try {
-                // Initialize the client
                 supabaseClient = window.supabase.createClient(url, key);
                 checkUser();
-            } catch (e) {
-                alert("Invalid Configuration. Please clear local storage and try again.");
-            }
+            } catch (e) { alert("Config Error"); }
         }
 
-        // --- 2. AUTHENTICATION ---
+        // AUTH
         async function checkUser() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
-                showApp(session.user);
+                document.getElementById('authScreen').classList.add('hidden');
+                document.getElementById('appInterface').classList.remove('hidden');
+                loadData();
             } else {
                 document.getElementById('authScreen').classList.remove('hidden');
             }
@@ -236,23 +268,13 @@
         async function handleAuth(type) {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const msg = document.getElementById('authMsg');
-            msg.innerText = "Processing...";
-
-            let result;
-            if (type === 'SIGNUP') {
-                result = await supabaseClient.auth.signUp({ email, password });
-                if (!result.error) alert("Check your email for the confirmation link!");
-            } else {
-                result = await supabaseClient.auth.signInWithPassword({ email, password });
-            }
-
-            if (result.error) {
-                msg.innerText = result.error.message;
-            } else if (result.data.session) {
-                document.getElementById('authScreen').classList.add('hidden');
-                showApp(result.data.session.user);
-            }
+            let res;
+            if(type === 'SIGNUP') res = await supabaseClient.auth.signUp({ email, password });
+            else res = await supabaseClient.auth.signInWithPassword({ email, password });
+            
+            if(res.error) document.getElementById('authMsg').innerText = res.error.message;
+            else if(res.data.session) window.location.reload();
+            else if(type === 'SIGNUP') alert("Check email for confirmation!");
         }
 
         async function logout() {
@@ -260,173 +282,272 @@
             window.location.reload();
         }
 
-        function showApp(user) {
-            document.getElementById('authScreen').classList.add('hidden');
-            document.getElementById('appInterface').classList.remove('hidden');
-            document.getElementById('userEmail').innerText = user.email;
-            fetchData();
+        // DATA LOADING
+        async function loadData() {
+            // 1. Fetch Accounts
+            const accRes = await supabaseClient.from('accounts').select('*').order('created_at');
+            if(accRes.data) accounts = accRes.data;
+
+            // 2. Fetch Favorites
+            const favRes = await supabaseClient.from('favorites').select('*');
+            if(favRes.data) favorites = favRes.data;
+
+            // 3. Fetch Transactions
+            const trxRes = await supabaseClient.from('transactions').select('*').order('transaction_date', {ascending: false}).limit(100);
+            if(trxRes.data) transactions = trxRes.data;
+
+            renderApp();
         }
 
-        // --- 3. DATA OPERATIONS ---
-        async function fetchData() {
-            // Fetch Transactions
-            const { data, error } = await supabaseClient
-                .from('transactions')
-                .select('*')
-                .order('transaction_date', { ascending: false })
-                .order('created_at', { ascending: false });
+        // RENDERING
+        function renderApp() {
+            renderAccounts();
+            renderStats();
+            renderTransactions();
+            renderFavorites();
+            populateDropdowns();
+        }
 
-            if (error) {
-                console.error('Error fetching data:', error);
+        function renderAccounts() {
+            const container = document.getElementById('accountsList');
+            // Calculate current balances
+            const balances = {};
+            accounts.forEach(a => balances[a.id] = parseFloat(a.initial_balance));
+            
+            // Adjust based on transactions
+            // Note: In a real production app, you might want to fetch aggregated balances from DB
+            // but for personal use, calculating on client side for the last 100-500 txns is fine
+            // IF we fetched ALL history. Since we limit fetch, this balance calc is approximate 
+            // unless we store 'current_balance' in DB and update it. 
+            // For V2 Simplicity: We will show Initial Balance + Calculated delta from fetched txns. 
+            // *Better approach for V2*: Let's rely on Client Calculation of ALL history? 
+            // Or better: Just show the account cards.
+            
+            // To make this robust without complex SQL triggers: 
+            // We'll just display the accounts and their types for now.
+            
+            const addBtn = container.lastElementChild;
+            container.innerHTML = '';
+            
+            if(accounts.length === 0) {
+                container.appendChild(addBtn);
                 return;
             }
 
-            updateDashboard(data);
+            accounts.forEach(acc => {
+                let icon = 'ri-bank-card-line';
+                if(acc.type === 'Cash') icon = 'ri-money-dollar-circle-line';
+                if(acc.type === 'Savings') icon = 'ri-safe-2-line';
+                if(acc.type === 'Credit Card') icon = 'ri-bank-card-2-line';
+
+                const card = document.createElement('div');
+                card.className = "min-w-[280px] h-40 rounded-2xl p-6 text-white card-gradient shadow-lg flex flex-col justify-between relative overflow-hidden";
+                card.innerHTML = `
+                    <div class="absolute right-[-20px] top-[-20px] text-white opacity-10 text-9xl"><i class="${icon}"></i></div>
+                    <div class="flex justify-between items-start z-10">
+                        <div>
+                            <p class="text-xs font-bold opacity-60 uppercase tracking-wider">${acc.type}</p>
+                            <h3 class="text-lg font-bold">${acc.name}</h3>
+                        </div>
+                        <i class="${icon} text-xl"></i>
+                    </div>
+                    <div class="z-10">
+                        <p class="text-xs opacity-60">Balance (approx)</p>
+                        <p class="text-2xl font-bold">$${parseFloat(acc.initial_balance).toLocaleString()}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            container.appendChild(addBtn);
+        }
+
+        function populateDropdowns() {
+            const accSelect = document.getElementById('account');
+            const toAccSelect = document.getElementById('toAccount');
+            
+            const html = accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+            accSelect.innerHTML = html;
+            toAccSelect.innerHTML = html;
+        }
+
+        function renderStats() {
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            let inc = 0, exp = 0, save = 0;
+
+            transactions.forEach(t => {
+                const d = new Date(t.transaction_date);
+                if(d.getMonth() === currentMonth) {
+                    const amt = parseFloat(t.amount);
+                    if(t.type === 'Income') inc += amt;
+                    if(t.type === 'Expense') exp += amt;
+                    if(t.type === 'Savings') save += amt;
+                }
+            });
+
+            document.getElementById('monthIncome').innerText = `$${inc.toFixed(2)}`;
+            document.getElementById('monthExpense').innerText = `$${exp.toFixed(2)}`;
+            document.getElementById('monthSavings').innerText = `$${save.toFixed(2)}`;
+            
+            // Net Worth (Sum of all account initial balances - this is static for now)
+            // Real net worth would require summing all history.
+            const totalInit = accounts.reduce((sum, a) => sum + parseFloat(a.initial_balance), 0);
+            document.getElementById('totalNetWorth').innerText = `$${totalInit.toLocaleString()}`; 
+        }
+
+        function renderTransactions() {
+            const list = document.getElementById('transactionsList');
+            list.innerHTML = '';
+            transactions.forEach(t => {
+                let color = 'text-slate-800';
+                let icon = 'ri-bill-line';
+                let sign = '-';
+                
+                if(t.type === 'Income') { color = 'text-green-600'; icon = 'ri-arrow-down-line'; sign = '+'; }
+                else if(t.type === 'Transfer') { color = 'text-blue-500'; icon = 'ri-arrow-left-right-line'; sign = ''; }
+                else if(t.type === 'Savings') { color = 'text-purple-600'; icon = 'ri-safe-line'; sign = ''; }
+                else { color = 'text-slate-800'; icon = 'ri-shopping-bag-3-line'; }
+
+                const accName = accounts.find(a => a.id == t.account_id)?.name || 'Unknown';
+
+                const div = document.createElement('div');
+                div.className = "bg-white p-4 rounded-xl shadow-sm flex items-center justify-between";
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 text-lg">
+                            <i class="${icon}"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-sm text-slate-800">${t.description || t.category}</p>
+                            <p class="text-xs text-slate-400">${t.transaction_date} • ${accName} • <span class="bg-slate-100 px-1 rounded">${t.category}</span></p>
+                        </div>
+                    </div>
+                    <span class="font-bold ${color}">${sign}$${parseFloat(t.amount).toFixed(2)}</span>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function renderFavorites() {
+            const list = document.getElementById('favoritesList');
+            list.innerHTML = '';
+            favorites.forEach(f => {
+                const btn = document.createElement('button');
+                btn.className = "whitespace-nowrap px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-bold text-xs border border-blue-100 hover:bg-blue-100 transition";
+                btn.innerText = f.label;
+                btn.onclick = () => applyFavorite(f);
+                list.appendChild(btn);
+            });
+        }
+
+        // ACTIONS
+        function setType(type) {
+            document.getElementById('type').value = type;
+            
+            // UI Toggle
+            document.querySelectorAll('.type-btn').forEach(b => {
+                b.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
+                if(b.dataset.type === type) b.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
+            });
+
+            // Update Categories
+            const catSelect = document.getElementById('category');
+            catSelect.innerHTML = '';
+            CATEGORIES[type].forEach(c => {
+                catSelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+
+            // Toggle Transfer Fields
+            const toAcc = document.getElementById('toAccountField');
+            const catField = document.getElementById('categoryField');
+            
+            if(type === 'Transfer') {
+                toAcc.classList.remove('hidden');
+                catField.classList.add('hidden');
+            } else {
+                toAcc.classList.add('hidden');
+                catField.classList.remove('hidden');
+            }
+        }
+
+        async function createAccount() {
+            const name = document.getElementById('newAccName').value;
+            const type = document.getElementById('newAccType').value;
+            const bal = document.getElementById('newAccBal').value;
+            
+            const { error } = await supabaseClient.from('accounts').insert([{
+                name, type, initial_balance: bal, user_id: (await supabaseClient.auth.getUser()).data.user.id
+            }]);
+
+            if(!error) {
+                document.getElementById('accountModal').classList.add('hidden');
+                loadData();
+            } else {
+                alert(error.message);
+            }
         }
 
         document.getElementById('trxForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const amountVal = parseFloat(document.getElementById('amount').value);
             const type = document.getElementById('type').value;
+            const user = (await supabaseClient.auth.getUser()).data.user;
             
-            // Convert amount based on type (Expense is negative for logic, but stored positive usually, 
-            // let's store strictly: Income (+), Expense (-))
-            const finalAmount = type === 'Expense' ? -Math.abs(amountVal) : Math.abs(amountVal);
-
-            const newTrx = {
-                amount: finalAmount,
+            const payload = {
+                user_id: user.id,
+                amount: document.getElementById('amount').value,
                 type: type,
-                category: document.getElementById('category').value,
+                account_id: document.getElementById('account').value,
+                transaction_date: document.getElementById('date').value,
                 description: document.getElementById('desc').value,
-                transaction_date: document.getElementById('date').value
+                category: type === 'Transfer' ? 'Transfer' : document.getElementById('category').value,
+                transfer_to_account_id: type === 'Transfer' ? document.getElementById('toAccount').value : null
             };
 
-            const { error } = await supabaseClient.from('transactions').insert([newTrx]);
-
-            if (error) {
-                alert('Error adding: ' + error.message);
-            } else {
-                // Reset form and refresh
+            const { error } = await supabaseClient.from('transactions').insert([payload]);
+            if(error) alert(error.message);
+            else {
                 e.target.reset();
-                document.getElementById('date').valueAsDate = new Date(); // Reset date
-                updateCategories(); // Reset category dropdown
-                
-                // Close mobile panel if open
-                const panel = document.getElementById('transactionPanel');
-                if(!panel.classList.contains('translate-y-full')) togglePanel();
-
-                fetchData();
+                setType('Expense');
+                document.getElementById('date').valueAsDate = new Date();
+                togglePanel();
+                loadData();
             }
         });
 
-        // --- 4. UI UPDATES & CHARTS ---
-        function updateDashboard(transactions) {
-            let income = 0;
-            let expense = 0;
+        async function saveAsFavorite() {
+            const label = prompt("Name this template (e.g. 'Morning Coffee'):");
+            if(!label) return;
 
-            // Clear lists
-            const mobileList = document.getElementById('mobileList');
-            const desktopList = document.getElementById('desktopList');
-            mobileList.innerHTML = '';
-            desktopList.innerHTML = '';
-
-            transactions.forEach(trx => {
-                const amt = parseFloat(trx.amount);
-                if (amt > 0) income += amt;
-                else expense += Math.abs(amt);
-
-                const html = createTrxCard(trx);
-                mobileList.insertAdjacentHTML('beforeend', html);
-                desktopList.insertAdjacentHTML('beforeend', html);
-            });
-
-            // Update KPI
-            document.getElementById('displayIncome').innerText = `+${income.toFixed(2)}`;
-            document.getElementById('displayExpense').innerText = `-${expense.toFixed(2)}`;
-            const bal = income - expense;
-            document.getElementById('displayBalance').innerText = `${bal >= 0 ? '' : '-'}$${Math.abs(bal).toFixed(2)}`;
-            document.getElementById('displayBalance').className = `text-2xl font-bold mt-1 ${bal >= 0 ? 'text-green-600' : 'text-red-600'}`;
-
-            renderChart(transactions);
-        }
-
-        function createTrxCard(trx) {
-            const isInc = trx.amount > 0;
-            const color = isInc ? 'text-green-600' : 'text-gray-800';
-            const icon = isInc ? '↓' : '↑';
-            const sign = isInc ? '+' : '';
-            return `
-                <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center hover:bg-gray-50 transition">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full ${isInc ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'} flex items-center justify-center text-lg font-bold">
-                            ${trx.category.charAt(0)}
-                        </div>
-                        <div>
-                            <p class="font-bold text-gray-800 text-sm">${trx.description || trx.category}</p>
-                            <p class="text-xs text-gray-400">${trx.transaction_date} • ${trx.category}</p>
-                        </div>
-                    </div>
-                    <span class="font-bold ${color}">${sign}${parseFloat(trx.amount).toFixed(2)}</span>
-                </div>
-            `;
-        }
-
-        function renderChart(transactions) {
-            const ctx = document.getElementById('financeChart').getContext('2d');
+            const user = (await supabaseClient.auth.getUser()).data.user;
+            const payload = {
+                user_id: user.id,
+                label: label,
+                amount: document.getElementById('amount').value || 0,
+                type: document.getElementById('type').value,
+                category: document.getElementById('category').value,
+                description: document.getElementById('desc').value,
+                account_id: document.getElementById('account').value
+            };
             
-            // Group by Date for the last 7 items or days
-            // Simplified: Just showing last 10 transactions amounts visually
-            const recent = transactions.slice(0, 10).reverse();
-            
-            const labels = recent.map(t => t.transaction_date.substring(5)); // MM-DD
-            const dataPts = recent.map(t => t.amount);
-            const colors = dataPts.map(v => v > 0 ? '#10B981' : '#EF4444');
-
-            if (chartInstance) chartInstance.destroy();
-
-            chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Cash Flow',
-                        data: dataPts,
-                        backgroundColor: colors,
-                        borderRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { display: false } },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
+            await supabaseClient.from('favorites').insert([payload]);
+            loadData();
         }
 
-        // --- 5. HELPERS ---
-        function updateCategories() {
-            const type = document.getElementById('type').value;
-            const select = document.getElementById('category');
-            select.innerHTML = '';
-            CATEGORIES[type].forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.innerText = cat;
-                select.appendChild(opt);
-            });
+        function applyFavorite(fav) {
+            setType(fav.type);
+            document.getElementById('amount').value = fav.amount;
+            document.getElementById('desc').value = fav.description;
+            if(fav.account_id) document.getElementById('account').value = fav.account_id;
+            // Delay category set to allow dropdown repopulation
+            setTimeout(() => {
+                document.getElementById('category').value = fav.category;
+            }, 50);
         }
 
+        function openAccountModal() { document.getElementById('accountModal').classList.remove('hidden'); }
         function togglePanel() {
-            const panel = document.getElementById('transactionPanel');
-            if (panel.classList.contains('translate-y-full')) {
-                panel.classList.remove('translate-y-full'); // Show
-            } else {
-                panel.classList.add('translate-y-full'); // Hide
-            }
+            const p = document.getElementById('actionPanel');
+            p.classList.toggle('translate-y-full');
         }
     </script>
 </body>

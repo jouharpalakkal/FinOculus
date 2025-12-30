@@ -1,1 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinOculus | Personal Finance</title>
+    
+    <!-- 1. Tailwind CSS for Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Supabase JS Client (The Database Connector) -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <!-- 3. Chart.js for Visuals -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Custom Styles for Scrollbars and transitions -->
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Hide scrollbar for Chrome/Safari/Opera */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen overflow-hidden flex flex-col">
+
+    <!-- CONFIGURATION MODAL (Runs on first load if keys are missing) -->
+    <div id="configModal" class="fixed inset-0 bg-gray-900 bg-opacity-90 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-4 text-blue-600">Connect to Cloud</h2>
+            <p class="text-sm text-gray-500 mb-6">Enter your Supabase URL and Anon Key to start.</p>
+            <input type="text" id="inputUrl" placeholder="Supabase Project URL" class="w-full p-3 border rounded mb-3 bg-gray-50">
+            <input type="text" id="inputKey" placeholder="Supabase Anon Key" class="w-full p-3 border rounded mb-6 bg-gray-50">
+            <button onclick="saveConfig()" class="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 font-bold transition">Connect</button>
+        </div>
+    </div>
+
+    <!-- AUTH SCREEN -->
+    <div id="authScreen" class="fixed inset-0 z-40 bg-gray-100 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center fade-in">
+            <div class="mb-6">
+                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight">FinOculus</h1>
+                <p class="text-gray-500 text-sm">Sign in to sync your finances</p>
+            </div>
+            <input type="email" id="email" placeholder="Email" class="w-full p-3 border rounded-lg mb-3 outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="password" id="password" placeholder="Password" class="w-full p-3 border rounded-lg mb-6 outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex gap-2">
+                <button onclick="handleAuth('LOGIN')" class="flex-1 bg-gray-800 text-white py-3 rounded-lg hover:bg-black transition">Log In</button>
+                <button onclick="handleAuth('SIGNUP')" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">Sign Up</button>
+            </div>
+            <p id="authMsg" class="mt-4 text-xs text-red-500 min-h-[20px]"></p>
+        </div>
+    </div>
+
+    <!-- MAIN APP INTERFACE -->
+    <div id="appInterface" class="flex-1 flex flex-col h-full hidden">
+        
+        <!-- Navbar -->
+        <nav class="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm z-10">
+            <div class="font-bold text-xl tracking-tight text-blue-900 flex items-center gap-2">
+                <span class="text-2xl">👁️</span> FinOculus
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="userEmail" class="text-sm text-gray-500 hidden md:block"></span>
+                <button onclick="logout()" class="text-sm text-red-500 font-medium hover:text-red-700">Sign Out</button>
+            </div>
+        </nav>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-hidden flex flex-col md:flex-row">
+            
+            <!-- Left: Dashboard & Charts -->
+            <main class="flex-1 overflow-y-auto p-4 md:p-8">
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                        <p class="text-gray-500 text-xs font-bold uppercase tracking-wider">Income</p>
+                        <h3 class="text-2xl font-bold text-gray-800 mt-1" id="displayIncome">$0.00</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500">
+                        <p class="text-gray-500 text-xs font-bold uppercase tracking-wider">Expenses</p>
+                        <h3 class="text-2xl font-bold text-gray-800 mt-1" id="displayExpense">$0.00</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-600">
+                        <p class="text-gray-500 text-xs font-bold uppercase tracking-wider">Net Balance</p>
+                        <h3 class="text-2xl font-bold text-gray-800 mt-1" id="displayBalance">$0.00</h3>
+                    </div>
+                </div>
+
+                <!-- Charts Area -->
+                <div class="bg-white p-6 rounded-xl shadow-sm mb-8 h-64 md:h-80 w-full relative">
+                    <h3 class="text-lg font-bold mb-4 text-gray-700">Cash Flow Analytics</h3>
+                    <canvas id="financeChart"></canvas>
+                </div>
+
+                <!-- Recent Transactions Mobile List -->
+                <div class="md:hidden">
+                    <h3 class="font-bold text-gray-700 mb-3">Recent Activity</h3>
+                    <div id="mobileList" class="space-y-3 pb-20">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right: Sidebar (Add Transaction & Desktop List) -->
+            <aside class="w-full md:w-96 bg-white border-l shadow-xl z-20 flex flex-col absolute md:relative bottom-0 h-3/4 md:h-auto rounded-t-3xl md:rounded-none transform transition-transform duration-300 translate-y-full md:translate-y-0" id="transactionPanel">
+                
+                <!-- Toggle Handle (Mobile Only) -->
+                <div class="md:hidden w-full h-8 flex items-center justify-center cursor-pointer" onclick="togglePanel()">
+                    <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+                </div>
+
+                <div class="p-6 flex-1 overflow-y-auto">
+                    <h3 class="text-lg font-bold mb-6 text-gray-800">Add Transaction</h3>
+                    
+                    <form id="trxForm" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Amount</label>
+                            <input type="number" id="amount" step="0.01" class="w-full text-3xl font-bold text-gray-800 border-b-2 border-gray-200 focus:border-blue-600 outline-none py-2 bg-transparent" placeholder="0.00" required>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
+                                <select id="type" class="w-full p-3 bg-gray-50 rounded-lg outline-none" onchange="updateCategories()">
+                                    <option value="Expense">Expense</option>
+                                    <option value="Income">Income</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
+                                <input type="date" id="date" class="w-full p-3 bg-gray-50 rounded-lg outline-none" required>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
+                            <select id="category" class="w-full p-3 bg-gray-50 rounded-lg outline-none">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Description</label>
+                            <input type="text" id="desc" class="w-full p-3 bg-gray-50 rounded-lg outline-none" placeholder="e.g. Lunch with client">
+                        </div>
+
+                        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transform active:scale-95 transition">
+                            Add Transaction
+                        </button>
+                    </form>
+
+                    <!-- Desktop Recent List -->
+                    <div class="hidden md:block mt-10">
+                        <h3 class="font-bold text-gray-700 mb-3 border-t pt-6">Recent History</h3>
+                        <div id="desktopList" class="space-y-3 overflow-y-auto h-64 pr-2 no-scrollbar">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- Mobile Floating Action Button -->
+            <button onclick="togglePanel()" class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center text-3xl z-50 hover:bg-blue-700 transition">
+                +
+            </button>
+        </div>
+    </div>
+
+    <!-- LOGIC -->
+    <script>
+        // --- 1. INITIALIZATION & CONFIG ---
+        let supabase;
+        const CONFIG_KEY = 'finoculus_config';
+        let chartInstance = null;
+
+        // Categories Map
+        const CATEGORIES = {
+            'Expense': ['Food & Drink', 'Rent/Mortgage', 'Transport', 'Groceries', 'Utilities', 'Shopping', 'Health', 'Entertainment', 'Other'],
+            'Income': ['Salary', 'Freelance', 'Investments', 'Gifts', 'Other']
+        };
+
+        window.onload = () => {
+            // Set default date to today
+            document.getElementById('date').valueAsDate = new Date();
+            updateCategories();
+            
+            // Check for saved config
+            const savedConfig = JSON.parse(localStorage.getItem(CONFIG_KEY));
+            if (savedConfig && savedConfig.url && savedConfig.key) {
+                initSupabase(savedConfig.url, savedConfig.key);
+            } else {
+                document.getElementById('configModal').classList.remove('hidden');
+            }
+        };
+
+        function saveConfig() {
+            const url = document.getElementById('inputUrl').value;
+            const key = document.getElementById('inputKey').value;
+            if(url && key) {
+                localStorage.setItem(CONFIG_KEY, JSON.stringify({url, key}));
+                initSupabase(url, key);
+                document.getElementById('configModal').classList.add('hidden');
+            } else {
+                alert("Please enter both URL and Key");
+            }
+        }
+
+        function initSupabase(url, key) {
+            try {
+                supabase = window.supabase.createClient(url, key);
+                checkUser();
+            } catch (e) {
+                alert("Invalid Configuration. Please clear local storage and try again.");
+            }
+        }
+
+        // --- 2. AUTHENTICATION ---
+        async function checkUser() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                showApp(session.user);
+            } else {
+                document.getElementById('authScreen').classList.remove('hidden');
+            }
+        }
+
+        async function handleAuth(type) {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const msg = document.getElementById('authMsg');
+            msg.innerText = "Processing...";
+
+            let result;
+            if (type === 'SIGNUP') {
+                result = await supabase.auth.signUp({ email, password });
+                if (!result.error) alert("Check your email for the confirmation link!");
+            } else {
+                result = await supabase.auth.signInWithPassword({ email, password });
+            }
+
+            if (result.error) {
+                msg.innerText = result.error.message;
+            } else if (result.data.session) {
+                document.getElementById('authScreen').classList.add('hidden');
+                showApp(result.data.session.user);
+            }
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.reload();
+        }
+
+        function showApp(user) {
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('appInterface').classList.remove('hidden');
+            document.getElementById('userEmail').innerText = user.email;
+            fetchData();
+        }
+
+        // --- 3. DATA OPERATIONS ---
+        async function fetchData() {
+            // Fetch Transactions
+            const { data, error } = await supabase
+                .from('transactions')
+                .select('*')
+                .order('transaction_date', { ascending: false })
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching data:', error);
+                return;
+            }
+
+            updateDashboard(data);
+        }
+
+        document.getElementById('trxForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const amountVal = parseFloat(document.getElementById('amount').value);
+            const type = document.getElementById('type').value;
+            
+            // Convert amount based on type (Expense is negative for logic, but stored positive usually, 
+            // let's store strictly: Income (+), Expense (-))
+            const finalAmount = type === 'Expense' ? -Math.abs(amountVal) : Math.abs(amountVal);
+
+            const newTrx = {
+                amount: finalAmount,
+                type: type,
+                category: document.getElementById('category').value,
+                description: document.getElementById('desc').value,
+                transaction_date: document.getElementById('date').value
+            };
+
+            const { error } = await supabase.from('transactions').insert([newTrx]);
+
+            if (error) {
+                alert('Error adding: ' + error.message);
+            } else {
+                // Reset form and refresh
+                e.target.reset();
+                document.getElementById('date').valueAsDate = new Date(); // Reset date
+                updateCategories(); // Reset category dropdown
+                
+                // Close mobile panel if open
+                const panel = document.getElementById('transactionPanel');
+                if(!panel.classList.contains('translate-y-full')) togglePanel();
+
+                fetchData();
+            }
+        });
+
+        // --- 4. UI UPDATES & CHARTS ---
+        function updateDashboard(transactions) {
+            let income = 0;
+            let expense = 0;
+
+            // Clear lists
+            const mobileList = document.getElementById('mobileList');
+            const desktopList = document.getElementById('desktopList');
+            mobileList.innerHTML = '';
+            desktopList.innerHTML = '';
+
+            transactions.forEach(trx => {
+                const amt = parseFloat(trx.amount);
+                if (amt > 0) income += amt;
+                else expense += Math.abs(amt);
+
+                const html = createTrxCard(trx);
+                mobileList.insertAdjacentHTML('beforeend', html);
+                desktopList.insertAdjacentHTML('beforeend', html);
+            });
+
+            // Update KPI
+            document.getElementById('displayIncome').innerText = `+${income.toFixed(2)}`;
+            document.getElementById('displayExpense').innerText = `-${expense.toFixed(2)}`;
+            const bal = income - expense;
+            document.getElementById('displayBalance').innerText = `${bal >= 0 ? '' : '-'}$${Math.abs(bal).toFixed(2)}`;
+            document.getElementById('displayBalance').className = `text-2xl font-bold mt-1 ${bal >= 0 ? 'text-green-600' : 'text-red-600'}`;
+
+            renderChart(transactions);
+        }
+
+        function createTrxCard(trx) {
+            const isInc = trx.amount > 0;
+            const color = isInc ? 'text-green-600' : 'text-gray-800';
+            const icon = isInc ? '↓' : '↑';
+            const sign = isInc ? '+' : '';
+            return `
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center hover:bg-gray-50 transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full ${isInc ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'} flex items-center justify-center text-lg font-bold">
+                            ${trx.category.charAt(0)}
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-800 text-sm">${trx.description || trx.category}</p>
+                            <p class="text-xs text-gray-400">${trx.transaction_date} • ${trx.category}</p>
+                        </div>
+                    </div>
+                    <span class="font-bold ${color}">${sign}${parseFloat(trx.amount).toFixed(2)}</span>
+                </div>
+            `;
+        }
+
+        function renderChart(transactions) {
+            const ctx = document.getElementById('financeChart').getContext('2d');
+            
+            // Group by Date for the last 7 items or days
+            // Simplified: Just showing last 10 transactions amounts visually
+            const recent = transactions.slice(0, 10).reverse();
+            
+            const labels = recent.map(t => t.transaction_date.substring(5)); // MM-DD
+            const dataPts = recent.map(t => t.amount);
+            const colors = dataPts.map(v => v > 0 ? '#10B981' : '#EF4444');
+
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Cash Flow',
+                        data: dataPts,
+                        backgroundColor: colors,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- 5. HELPERS ---
+        function updateCategories() {
+            const type = document.getElementById('type').value;
+            const select = document.getElementById('category');
+            select.innerHTML = '';
+            CATEGORIES[type].forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.innerText = cat;
+                select.appendChild(opt);
+            });
+        }
+
+        function togglePanel() {
+            const panel = document.getElementById('transactionPanel');
+            if (panel.classList.contains('translate-y-full')) {
+                panel.classList.remove('translate-y-full'); // Show
+            } else {
+                panel.classList.add('translate-y-full'); // Hide
+            }
+        }
+    </script>
+</body>
+</html>

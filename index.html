@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinOculus V3</title>
+    <title>FinOculus Pro</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,286 +12,264 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 
     <style>
-        body { background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body { background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); }
-        .card-gradient { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
+        .tab-inactive { color: #64748b; }
+        .fab { box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3), 0 2px 4px -1px rgba(37, 99, 235, 0.15); }
     </style>
 </head>
-<body class="text-slate-800 h-screen overflow-hidden flex flex-col">
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
 
-    <!-- CONFIG MODAL -->
-    <div id="configModal" class="fixed inset-0 bg-slate-900/95 z-50 flex items-center justify-center hidden">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-2 text-slate-800">Setup Cloud</h2>
-            <p class="text-sm text-slate-500 mb-6">Enter your Supabase credentials to sync data.</p>
-            <input type="text" id="inputUrl" placeholder="Project URL" class="w-full p-3 border rounded-xl mb-3 bg-slate-50">
-            <input type="text" id="inputKey" placeholder="Anon Key" class="w-full p-3 border rounded-xl mb-6 bg-slate-50">
-            <button onclick="saveConfig()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">Connect</button>
+    <!-- 1. AUTH & CONFIG MODALS (Hidden by default) -->
+    <div id="configModal" class="fixed inset-0 bg-slate-900/90 z-[60] flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm mx-4">
+            <h2 class="text-xl font-bold mb-2 text-slate-800">Setup Cloud Database</h2>
+            <p class="text-xs text-slate-500 mb-4">Enter your Supabase credentials to sync data.</p>
+            <input type="text" id="inputUrl" placeholder="Project URL" class="w-full p-3 border rounded-lg mb-2 text-sm bg-slate-50">
+            <input type="text" id="inputKey" placeholder="Anon Key" class="w-full p-3 border rounded-lg mb-4 text-sm bg-slate-50">
+            <button onclick="saveConfig()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">Connect</button>
         </div>
     </div>
 
-    <!-- AUTH SCREEN -->
-    <div id="authScreen" class="fixed inset-0 z-40 bg-slate-50 flex items-center justify-center hidden">
-        <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm text-center">
-            <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
-                <i class="ri-wallet-3-line text-3xl"></i>
+    <div id="authScreen" class="fixed inset-0 z-50 bg-slate-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center">
+            <div class="w-12 h-12 bg-blue-600 rounded-lg mx-auto mb-4 flex items-center justify-center text-white text-2xl"><i class="ri-wallet-3-line"></i></div>
+            <h1 class="text-2xl font-bold mb-1">FinOculus Pro</h1>
+            <p class="text-slate-500 text-sm mb-6">Advanced Financial Tracking</p>
+            <input type="email" id="email" placeholder="Email" class="w-full p-3 border rounded-lg mb-2 bg-slate-50">
+            <input type="password" id="password" placeholder="Password" class="w-full p-3 border rounded-lg mb-4 bg-slate-50">
+            <div class="flex gap-2">
+                <button onclick="handleAuth('LOGIN')" class="flex-1 bg-slate-800 text-white py-2.5 rounded-lg hover:bg-slate-900">Log In</button>
+                <button onclick="handleAuth('SIGNUP')" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700">Sign Up</button>
             </div>
-            <h1 class="text-2xl font-bold mb-1">FinOculus V3</h1>
-            <p class="text-slate-400 text-sm mb-6">Sign in via Magic Link (OTP)</p>
-            
-            <input type="email" id="email" placeholder="Enter your email" class="w-full p-4 border rounded-xl mb-6 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500 text-center">
-            
-            <button onclick="handleAuth()" class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition mb-2 shadow-lg">Send Magic Link</button>
-            
-            <p id="authMsg" class="mt-4 text-sm font-medium min-h-[20px]"></p>
+            <p id="authMsg" class="mt-4 text-xs text-red-500 min-h-[20px]"></p>
         </div>
     </div>
 
-    <!-- APP INTERFACE -->
-    <div id="appInterface" class="flex-1 flex flex-col h-full hidden relative">
+    <!-- 2. MAIN APP -->
+    <div id="appInterface" class="flex-1 flex flex-col h-full hidden">
         
-        <!-- Top Nav -->
-        <nav class="bg-white border-b px-6 py-3 flex justify-between items-center z-10">
-            <div class="flex items-center gap-2 text-slate-900 font-bold text-xl">
-                <i class="ri-wallet-3-fill text-blue-600"></i> FinOculus
+        <!-- Header -->
+        <header class="bg-white border-b px-4 py-3 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-2 text-blue-700 font-bold text-lg">
+                <i class="ri-pie-chart-2-fill"></i> FinOculus
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="openSettings()" class="text-slate-400 hover:text-slate-700 p-2"><i class="ri-settings-3-line text-xl"></i></button>
-                <button onclick="logout()" class="text-sm text-red-500 font-medium hover:bg-red-50 px-3 py-1 rounded-lg">Sign Out</button>
+            <div class="flex items-center gap-3">
+                <button onclick="exportData()" class="text-sm text-slate-600 hover:text-blue-600 flex items-center gap-1">
+                    <i class="ri-download-cloud-2-line"></i> <span class="hidden sm:inline">Export</span>
+                </button>
+                <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 ml-2">
+                    <i class="ri-logout-box-r-line"></i>
+                </button>
             </div>
-        </nav>
+        </header>
 
-        <div class="flex-1 flex overflow-hidden">
+        <!-- Navigation Tabs -->
+        <div class="bg-white border-b px-4 flex gap-6 text-sm overflow-x-auto shrink-0">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="py-3 tab-active">Dashboard</button>
+            <button onclick="switchTab('accounts')" id="tab-accounts" class="py-3 tab-inactive">Accounts</button>
+            <button onclick="switchTab('categories')" id="tab-categories" class="py-3 tab-inactive">Categories</button>
+        </div>
+
+        <!-- Scrollable Content Area -->
+        <main class="flex-1 overflow-y-auto bg-slate-50 relative p-4 md:p-6" id="mainContent">
             
-            <!-- MAIN CONTENT (Dashboard) -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8">
-                
-                <!-- Accounts Section -->
-                <div class="flex justify-between items-end mb-4">
-                    <h2 class="text-lg font-bold text-slate-700">My Accounts</h2>
-                    <button onclick="openAccountModal()" class="text-sm text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-lg hover:bg-blue-100">+ Add Account</button>
-                </div>
-
-                <!-- Accounts Horizontal Scroll -->
-                <div class="flex gap-4 overflow-x-auto pb-4 mb-6 no-scrollbar" id="accountsList">
-                    <!-- Populated by JS -->
-                    <div class="min-w-[280px] h-40 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:border-blue-400 hover:text-blue-500 transition" onclick="openAccountModal()">
-                        <i class="ri-add-circle-line text-3xl mb-1"></i>
-                        <span class="font-medium">Add First Account</span>
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="space-y-6 max-w-5xl mx-auto">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gradient-to-br from-blue-600 to-blue-700 p-5 rounded-2xl text-white shadow-lg shadow-blue-200">
+                        <p class="text-blue-100 text-xs font-semibold uppercase">Total Net Worth</p>
+                        <h2 class="text-3xl font-bold mt-1" id="dashNetWorth">$0.00</h2>
+                        <div class="mt-4 flex gap-2 text-xs text-blue-100 bg-white/10 p-2 rounded-lg inline-flex">
+                            <i class="ri-bank-card-line"></i> Across <span id="dashAccountCount">0</span> accounts
+                        </div>
                     </div>
-                </div>
-
-                <!-- Stats Grid -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                        <p class="text-xs text-slate-400 font-bold uppercase">Net Worth</p>
-                        <h3 class="text-xl font-bold text-slate-800 mt-1" id="totalNetWorth">...</h3>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                        <div class="flex justify-between items-center mb-1">
+                            <p class="text-slate-500 text-xs font-bold uppercase">Monthly In</p>
+                            <span class="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full"><i class="ri-arrow-up-line"></i></span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800" id="dashIncome">$0.00</h3>
                     </div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                        <p class="text-xs text-slate-400 font-bold uppercase">Income (Mo)</p>
-                        <h3 class="text-xl font-bold text-green-600 mt-1" id="monthIncome">...</h3>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                        <p class="text-xs text-slate-400 font-bold uppercase">Expense (Mo)</p>
-                        <h3 class="text-xl font-bold text-red-500 mt-1" id="monthExpense">...</h3>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                        <p class="text-xs text-slate-400 font-bold uppercase">Savings (Mo)</p>
-                        <h3 class="text-xl font-bold text-blue-600 mt-1" id="monthSavings">...</h3>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                        <div class="flex justify-between items-center mb-1">
+                            <p class="text-slate-500 text-xs font-bold uppercase">Monthly Out</p>
+                            <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full"><i class="ri-arrow-down-line"></i></span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800" id="dashExpense">$0.00</h3>
                     </div>
                 </div>
 
                 <!-- Recent Transactions -->
-                <h2 class="text-lg font-bold text-slate-700 mb-4">Recent Activity</h2>
-                <div id="transactionsList" class="space-y-3">
-                    <!-- JS Populated -->
-                </div>
-            </main>
-
-            <!-- RIGHT PANEL (Forms) -->
-            <aside class="fixed md:relative bottom-0 w-full md:w-[450px] bg-white border-l shadow-2xl z-20 rounded-t-3xl md:rounded-none flex flex-col transition-transform duration-300 translate-y-full md:translate-y-0 h-[85vh] md:h-auto" id="actionPanel">
-                
-                <!-- Mobile Handle -->
-                <div class="md:hidden w-full h-10 flex items-center justify-center cursor-pointer border-b" onclick="togglePanel()">
-                    <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
-                </div>
-
-                <div class="flex-1 overflow-y-auto p-6">
-                    
-                    <!-- Favorites / Quick Add -->
-                    <div class="mb-8">
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase">Quick Templates</h3>
-                            <button onclick="saveAsFavorite()" class="text-xs text-blue-600 hover:underline">Save current as Favorite</button>
-                        </div>
-                        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2" id="favoritesList">
-                            <!-- Populated JS -->
-                        </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="px-6 py-4 border-b flex justify-between items-center bg-slate-50/50">
+                        <h3 class="font-bold text-slate-700">Recent Transactions</h3>
                     </div>
-
-                    <!-- Main Form -->
-                    <h2 class="text-xl font-bold text-slate-800 mb-6">New Transaction</h2>
-                    <form id="trxForm" class="space-y-5">
-                        
-                        <!-- Type Selector -->
-                        <div class="grid grid-cols-4 gap-2 bg-slate-100 p-1 rounded-xl">
-                            <button type="button" onclick="setType('Expense')" class="type-btn active rounded-lg py-2 text-sm font-bold transition text-slate-500 hover:bg-white" data-type="Expense">Exp</button>
-                            <button type="button" onclick="setType('Income')" class="type-btn rounded-lg py-2 text-sm font-bold transition text-slate-500 hover:bg-white" data-type="Income">Inc</button>
-                            <button type="button" onclick="setType('Savings')" class="type-btn rounded-lg py-2 text-sm font-bold transition text-slate-500 hover:bg-white" data-type="Savings">Save</button>
-                            <button type="button" onclick="setType('Transfer')" class="type-btn rounded-lg py-2 text-sm font-bold transition text-slate-500 hover:bg-white" data-type="Transfer">Tfr</button>
-                        </div>
-                        <input type="hidden" id="type" value="Expense">
-
-                        <!-- Amount -->
-                        <div class="relative">
-                            <span class="absolute left-0 top-2 text-slate-400 text-sm font-bold" id="inputCurrencyLabel">$</span>
-                            <input type="number" id="amount" step="0.01" class="w-full text-4xl font-bold text-slate-800 border-b-2 border-slate-100 focus:border-blue-600 outline-none py-1 bg-transparent pl-8" placeholder="0.00" required>
-                        </div>
-
-                        <!-- Date -->
-                        <input type="date" id="date" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm font-medium outline-none">
-
-                        <!-- Account Selection -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">From Account</label>
-                                <select id="account" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm outline-none font-medium"></select>
-                            </div>
-                            <div id="toAccountField" class="hidden">
-                                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">To Account</label>
-                                <select id="toAccount" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm outline-none font-medium"></select>
-                            </div>
-                        </div>
-
-                        <!-- Category -->
-                        <div id="categoryField">
-                            <div class="flex justify-between items-center mb-1">
-                                <label class="block text-xs font-bold text-slate-400 uppercase">Category</label>
-                                <button type="button" onclick="openCategoryModal()" class="text-xs text-blue-600 font-bold hover:underline">Manage</button>
-                            </div>
-                            <select id="category" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm outline-none font-medium"></select>
-                        </div>
-
-                        <!-- Description -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Note</label>
-                            <input type="text" id="desc" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm outline-none" placeholder="What's this for?">
-                        </div>
-
-                        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transform active:scale-95 transition">
-                            Save Transaction
-                        </button>
-                    </form>
+                    <div id="transactionsList" class="divide-y divide-slate-50">
+                        <!-- JS Populates this -->
+                        <div class="p-8 text-center text-slate-400">Loading...</div>
+                    </div>
                 </div>
-            </aside>
-        </div>
+            </div>
 
-        <!-- Add FAB (Mobile) -->
-        <button onclick="togglePanel()" class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl z-30 hover:bg-blue-700 transition">
+            <!-- VIEW: ACCOUNTS -->
+            <div id="view-accounts" class="hidden max-w-4xl mx-auto space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-slate-800">My Accounts</h2>
+                    <button onclick="openModal('accountModal')" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-black transition">
+                        + Add Account
+                    </button>
+                </div>
+                <div id="accountsList" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- JS Populates this -->
+                </div>
+            </div>
+
+            <!-- VIEW: CATEGORIES -->
+            <div id="view-categories" class="hidden max-w-4xl mx-auto space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-slate-800">Budget Categories</h2>
+                    <button onclick="openModal('categoryModal')" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-black transition">
+                        + New Category
+                    </button>
+                </div>
+                <div id="categoriesList" class="space-y-4">
+                    <!-- JS Populates this -->
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Floating Add Button -->
+        <button onclick="openTrxModal()" class="fab fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center text-2xl transition-transform active:scale-95 z-40">
             <i class="ri-add-line"></i>
         </button>
 
-        <!-- ADD ACCOUNT MODAL -->
-        <div id="accountModal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center">
-            <div class="bg-white p-6 rounded-2xl w-full max-w-sm m-4 shadow-2xl">
-                <h3 class="font-bold text-lg mb-4">Add New Account</h3>
-                <input type="text" id="newAccName" placeholder="Account Name (e.g. Chase)" class="w-full p-3 border rounded-xl mb-3">
-                <select id="newAccType" class="w-full p-3 border rounded-xl mb-3">
+    </div>
+
+    <!-- 3. MODALS (Forms) -->
+
+    <!-- Transaction Modal -->
+    <div id="trxModal" class="fixed inset-0 z-50 bg-slate-900/80 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl animate-slide-up">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold">New Transaction</h3>
+                <button onclick="closeModal('trxModal')" class="text-slate-400 hover:text-slate-600"><i class="ri-close-line text-xl"></i></button>
+            </div>
+            
+            <form id="trxForm" class="space-y-4">
+                <!-- Type Toggle -->
+                <div class="flex bg-slate-100 p-1 rounded-lg">
+                    <button type="button" class="flex-1 py-1.5 rounded-md text-sm font-medium transition text-slate-600 bg-white shadow-sm" id="type-Expense" onclick="setTrxType('Expense')">Expense</button>
+                    <button type="button" class="flex-1 py-1.5 rounded-md text-sm font-medium transition text-slate-500" id="type-Income" onclick="setTrxType('Income')">Income</button>
+                    <button type="button" class="flex-1 py-1.5 rounded-md text-sm font-medium transition text-slate-500" id="type-Transfer" onclick="setTrxType('Transfer')">Transfer</button>
+                </div>
+                <input type="hidden" id="trxType" value="Expense">
+
+                <!-- Amount -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Amount</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2.5 text-slate-400">$</span>
+                        <input type="number" id="trxAmount" step="0.01" class="w-full pl-7 pr-3 py-2.5 bg-slate-50 border rounded-lg text-lg font-bold outline-none focus:ring-2 focus:ring-blue-500" placeholder="0.00" required>
+                    </div>
+                </div>
+
+                <!-- Accounts Logic -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label id="lblFrom" class="block text-xs font-bold text-slate-500 uppercase mb-1">Account</label>
+                        <select id="trxAccount" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none" required></select>
+                    </div>
+                    <div id="divToAccount" class="hidden">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">To Account</label>
+                        <select id="trxToAccount" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none"></select>
+                    </div>
+                    <div id="divCategory">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
+                        <select id="trxCategory" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none"></select>
+                    </div>
+                </div>
+
+                <!-- Date & Desc -->
+                <div>
+                    <input type="date" id="trxDate" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none mb-3" required>
+                    <input type="text" id="trxDesc" placeholder="Description (Optional)" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm outline-none">
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">Save Transaction</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Account Modal -->
+    <div id="accountModal" class="fixed inset-0 z-50 bg-slate-900/80 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-lg font-bold mb-4">Add Account</h3>
+            <form id="accountForm" class="space-y-4">
+                <input type="text" id="accName" placeholder="Account Name (e.g., Chase Sapphire)" class="w-full p-3 border rounded-lg bg-slate-50" required>
+                <select id="accType" class="w-full p-3 border rounded-lg bg-slate-50">
                     <option value="Checking">Checking</option>
                     <option value="Savings">Savings</option>
-                    <option value="Credit Card">Credit Card</option>
+                    <option value="Credit">Credit Card</option>
                     <option value="Cash">Cash</option>
                     <option value="Investment">Investment</option>
                 </select>
-                <input type="number" id="newAccBal" placeholder="Current Balance" class="w-full p-3 border rounded-xl mb-6">
-                <div class="flex gap-2">
-                    <button onclick="document.getElementById('accountModal').classList.add('hidden')" class="flex-1 py-3 text-slate-500 font-bold">Cancel</button>
-                    <button onclick="createAccount()" class="flex-1 bg-blue-600 text-white rounded-xl font-bold">Create</button>
+                <input type="number" id="accBalance" placeholder="Initial Balance" step="0.01" class="w-full p-3 border rounded-lg bg-slate-50" required>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeModal('accountModal')" class="flex-1 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100">Cancel</button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium">Save</button>
                 </div>
-            </div>
+            </form>
         </div>
-
-        <!-- MANAGE CATEGORIES MODAL -->
-        <div id="categoryModal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center">
-            <div class="bg-white p-6 rounded-2xl w-full max-w-sm m-4 shadow-2xl flex flex-col h-[500px]">
-                <div class="flex justify-between items-center mb-4 border-b pb-4">
-                    <h3 class="font-bold text-lg">Manage Categories</h3>
-                    <button onclick="document.getElementById('categoryModal').classList.add('hidden')" class="text-slate-400 hover:text-red-500"><i class="ri-close-line text-2xl"></i></button>
-                </div>
-                
-                <div class="flex gap-2 mb-4">
-                    <button onclick="filterCatEdit('Expense')" id="catEditExp" class="flex-1 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white">Expense</button>
-                    <button onclick="filterCatEdit('Income')" id="catEditInc" class="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-100 text-slate-500">Income</button>
-                    <button onclick="filterCatEdit('Savings')" id="catEditSav" class="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-100 text-slate-500">Savings</button>
-                </div>
-
-                <div class="flex gap-2 mb-4">
-                    <input type="text" id="newCatName" placeholder="New Category Name" class="flex-1 p-2 border rounded-lg text-sm">
-                    <button onclick="addCategory()" class="bg-green-600 text-white px-4 rounded-lg font-bold hover:bg-green-700">+</button>
-                </div>
-
-                <div id="catEditList" class="flex-1 overflow-y-auto space-y-2 pr-1">
-                    <!-- Populated by JS -->
-                </div>
-            </div>
-        </div>
-
-        <!-- SETTINGS MODAL -->
-        <div id="settingsModal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center">
-            <div class="bg-white p-6 rounded-2xl w-full max-w-sm m-4 shadow-2xl">
-                <h3 class="font-bold text-lg mb-4">Settings</h3>
-                
-                <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Currency Symbol</label>
-                <div class="grid grid-cols-4 gap-2 mb-6">
-                    <button onclick="setCurrency('$')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">$</button>
-                    <button onclick="setCurrency('€')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">€</button>
-                    <button onclick="setCurrency('£')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">£</button>
-                    <button onclick="setCurrency('₹')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">₹</button>
-                    <button onclick="setCurrency('¥')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">¥</button>
-                    <button onclick="setCurrency('₽')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">₽</button>
-                    <button onclick="setCurrency('₩')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">₩</button>
-                    <button onclick="setCurrency('Rp')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition text-xs">Rp</button>
-                </div>
-
-                <button onclick="document.getElementById('settingsModal').classList.add('hidden')" class="w-full bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200">Close</button>
-            </div>
-        </div>
-
     </div>
 
-    <!-- LOGIC -->
+    <!-- Category Modal -->
+    <div id="categoryModal" class="fixed inset-0 z-50 bg-slate-900/80 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-lg font-bold mb-4">Add Category</h3>
+            <form id="categoryForm" class="space-y-4">
+                <input type="text" id="catName" placeholder="Category Name (e.g., Gym)" class="w-full p-3 border rounded-lg bg-slate-50" required>
+                <div class="grid grid-cols-2 gap-3">
+                    <select id="catType" class="w-full p-3 border rounded-lg bg-slate-50">
+                        <option value="Expense">Expense</option>
+                        <option value="Income">Income</option>
+                    </select>
+                    <input type="color" id="catColor" value="#3b82f6" class="w-full h-12 p-1 border rounded-lg cursor-pointer">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-500 font-bold uppercase">Monthly Goal/Limit</label>
+                    <input type="number" id="catLimit" placeholder="0.00" step="0.01" class="w-full p-3 border rounded-lg bg-slate-50">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeModal('categoryModal')" class="flex-1 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100">Cancel</button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
     <script>
-        // CONFIG
         let supabaseClient;
-        const CONFIG_KEY = 'finoculus_v2_config';
+        const CONFIG_KEY = 'finoculus_config_pro';
         
-        // DEFAULTS
-        const DEFAULT_CATEGORIES = {
-            'Expense': ['Food & Drink', 'Groceries', 'Transport', 'Utilities', 'Shopping', 'Health', 'Home', 'Entertainment', 'Education'],
-            'Income': ['Salary', 'Freelance', 'Business', 'Dividends', 'Gift', 'Refund'],
-            'Savings': ['Emergency Fund', 'Retirement', 'Vacation Goal', 'New Car Fund', 'General Savings', 'Investments'],
-            'Transfer': ['Transfer'] 
+        // Local State
+        let state = {
+            user: null,
+            accounts: [],
+            categories: [],
+            transactions: []
         };
 
-        // GLOBAL STATE
-        let accounts = [];
-        let transactions = [];
-        let favorites = [];
-        let userCategories = [];
-        let currentCurrency = '$'; // Default
-        let currentCatEditType = 'Expense';
-
+        // --- INIT ---
         window.onload = () => {
-            const savedConfig = JSON.parse(localStorage.getItem(CONFIG_KEY));
-            if (savedConfig?.url && savedConfig?.key) {
-                initSupabase(savedConfig.url, savedConfig.key);
-            } else {
-                document.getElementById('configModal').classList.remove('hidden');
-            }
-            document.getElementById('date').valueAsDate = new Date();
-            setType('Expense');
+            document.getElementById('trxDate').valueAsDate = new Date();
+            const config = JSON.parse(localStorage.getItem(CONFIG_KEY));
+            if (config) initSupabase(config.url, config.key);
+            else document.getElementById('configModal').classList.remove('hidden');
         };
 
         function saveConfig() {
@@ -306,59 +285,33 @@
         function initSupabase(url, key) {
             try {
                 supabaseClient = window.supabase.createClient(url, key);
-                
-                // Auth Listener (Better for Magic Link Redirects)
-                supabaseClient.auth.onAuthStateChange((event, session) => {
-                    if (session) {
-                        document.getElementById('authScreen').classList.add('hidden');
-                        document.getElementById('appInterface').classList.remove('hidden');
-                        loadData();
-                    } else {
-                        document.getElementById('authScreen').classList.remove('hidden');
-                        document.getElementById('appInterface').classList.add('hidden');
-                    }
-                });
-
                 checkUser();
             } catch (e) { alert("Config Error"); }
         }
 
-        // AUTH
+        // --- AUTH ---
         async function checkUser() {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                document.getElementById('authScreen').classList.add('hidden');
-                document.getElementById('appInterface').classList.remove('hidden');
-                loadData();
-            }
+            if (session) setupApp(session.user);
+            else document.getElementById('authScreen').classList.remove('hidden');
         }
 
-        async function handleAuth() {
+        async function handleAuth(type) {
             const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
             const msg = document.getElementById('authMsg');
+            msg.innerText = "Processing...";
             
-            if(!email) {
-                msg.innerText = "Please enter your email";
-                msg.className = "mt-4 text-sm font-medium text-red-500";
-                return;
-            }
+            let res;
+            if(type === 'SIGNUP') res = await supabaseClient.auth.signUp({email, password});
+            else res = await supabaseClient.auth.signInWithPassword({email, password});
 
-            msg.innerText = "Sending Magic Link...";
-            msg.className = "mt-4 text-sm font-medium text-blue-600";
-            
-            const { error } = await supabaseClient.auth.signInWithOtp({ 
-                email: email,
-                options: {
-                    emailRedirectTo: window.location.href // Redirect back to this page
-                }
-            });
-            
-            if(error) {
-                msg.innerText = error.message;
-                msg.className = "mt-4 text-sm font-medium text-red-500";
-            } else {
-                msg.innerText = "Check your email for the login link!";
-                msg.className = "mt-4 text-sm font-medium text-green-600";
+            if(res.error) msg.innerText = res.error.message;
+            else if(res.data.session) {
+                document.getElementById('authScreen').classList.add('hidden');
+                setupApp(res.data.session.user);
+            } else if(type === 'SIGNUP') {
+                msg.innerText = "Check your email to confirm!";
             }
         }
 
@@ -367,326 +320,392 @@
             window.location.reload();
         }
 
-        // DATA LOADING
-        async function loadData() {
-            const user = (await supabaseClient.auth.getUser()).data.user;
-            if(!user) return; // Guard
+        function setupApp(user) {
+            state.user = user;
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('appInterface').classList.remove('hidden');
+            refreshAllData();
+        }
 
-            // 1. Fetch Settings
-            const setRes = await supabaseClient.from('user_settings').select('*').single();
-            if(setRes.data) {
-                currentCurrency = setRes.data.currency_symbol;
-            } else {
-                // Init settings
-                await supabaseClient.from('user_settings').insert([{user_id: user.id, currency_symbol: '$'}]);
-            }
-            updateCurrencyUI();
+        // --- DATA FETCHING ---
+        async function refreshAllData() {
+            // Parallel fetch for speed
+            const [accRes, catRes, trxRes] = await Promise.all([
+                supabaseClient.from('accounts').select('*').order('created_at'),
+                supabaseClient.from('categories').select('*').order('name'),
+                supabaseClient.from('transactions').select(`
+                    *,
+                    account:accounts!account_id(name),
+                    to_account:accounts!target_account_id(name),
+                    category:categories(name, color)
+                `).order('transaction_date', {ascending: false}).order('created_at', {ascending: false})
+            ]);
 
-            // 2. Fetch Accounts
-            const accRes = await supabaseClient.from('accounts').select('*').order('created_at');
-            if(accRes.data) accounts = accRes.data;
-
-            // 3. Fetch Favorites
-            const favRes = await supabaseClient.from('favorites').select('*');
-            if(favRes.data) favorites = favRes.data;
-
-            // 4. Fetch Transactions
-            const trxRes = await supabaseClient.from('transactions').select('*').order('transaction_date', {ascending: false}).limit(100);
-            if(trxRes.data) transactions = trxRes.data;
-
-            // 5. Fetch Categories
-            const catRes = await supabaseClient.from('user_categories').select('*').order('name');
-            if(catRes.data && catRes.data.length > 0) {
-                userCategories = catRes.data;
-            } else {
-                await seedCategories(user.id);
+            if(accRes.error || catRes.error || trxRes.error) {
+                console.error("Fetch Error");
+                return;
             }
 
-            renderApp();
+            state.accounts = accRes.data;
+            state.categories = catRes.data;
+            state.transactions = trxRes.data;
+
+            updateUI();
         }
 
-        async function seedCategories(userId) {
-            const inserts = [];
-            for (const [type, list] of Object.entries(DEFAULT_CATEGORIES)) {
-                if(type === 'Transfer') continue;
-                list.forEach(name => inserts.push({ user_id: userId, name, type }));
-            }
-            const { data, error } = await supabaseClient.from('user_categories').insert(inserts).select();
-            if(data) userCategories = data;
-        }
-
-        // HELPER
-        function formatMoney(amount) {
-            return `${currentCurrency}${parseFloat(amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        }
-
-        function updateCurrencyUI() {
-            document.getElementById('inputCurrencyLabel').innerText = currentCurrency;
-        }
-
-        // RENDERING
-        function renderApp() {
+        function updateUI() {
+            renderDashboard();
             renderAccounts();
-            renderStats();
-            renderTransactions();
-            renderFavorites();
+            renderCategories();
             populateDropdowns();
+        }
+
+        // --- RENDERERS ---
+        function renderDashboard() {
+            // Calculate Totals
+            let income = 0, expense = 0;
+            state.transactions.forEach(t => {
+                const amt = parseFloat(t.amount);
+                // Simple monthly check (current month)
+                const isCurrentMonth = t.transaction_date.substring(0,7) === new Date().toISOString().substring(0,7);
+                if(isCurrentMonth) {
+                    if(t.type === 'Income') income += amt;
+                    if(t.type === 'Expense') expense += amt;
+                }
+            });
+
+            // Calculate Net Worth (Initial + Trx impact)
+            // We need to calculate balance PER account to get total net worth accurately
+            let netWorth = 0;
+            state.accounts.forEach(acc => {
+                let bal = parseFloat(acc.initial_balance);
+                state.transactions.forEach(t => {
+                    const amt = parseFloat(t.amount);
+                    if(t.account_id === acc.id) {
+                        if(t.type === 'Income') bal += amt;
+                        if(t.type === 'Expense') bal -= amt;
+                        if(t.type === 'Transfer') bal -= amt;
+                    }
+                    if(t.target_account_id === acc.id && t.type === 'Transfer') {
+                        bal += amt;
+                    }
+                });
+                netWorth += bal;
+            });
+
+            document.getElementById('dashIncome').innerText = `+${formatMoney(income)}`;
+            document.getElementById('dashExpense').innerText = `-${formatMoney(expense)}`;
+            document.getElementById('dashNetWorth').innerText = formatMoney(netWorth);
+            document.getElementById('dashAccountCount').innerText = state.accounts.length;
+
+            // Transactions List
+            const list = document.getElementById('transactionsList');
+            list.innerHTML = state.transactions.length ? '' : '<div class="p-6 text-center text-slate-400">No transactions yet</div>';
+            
+            state.transactions.slice(0, 20).forEach(t => {
+                let icon = 'ri-bill-line';
+                let color = 'text-slate-600';
+                let amountStr = '';
+                let subtext = '';
+
+                if(t.type === 'Income') {
+                    icon = 'ri-arrow-up-circle-fill';
+                    color = 'text-green-600';
+                    amountStr = `+${formatMoney(t.amount)}`;
+                    subtext = `${t.category?.name || 'Uncategorized'} • to ${t.account?.name}`;
+                } else if(t.type === 'Expense') {
+                    icon = 'ri-arrow-down-circle-fill';
+                    color = 'text-red-600';
+                    amountStr = `-${formatMoney(t.amount)}`;
+                    subtext = `${t.category?.name || 'Uncategorized'} • from ${t.account?.name}`;
+                } else {
+                    icon = 'ri-exchange-fill';
+                    color = 'text-blue-600';
+                    amountStr = `${formatMoney(t.amount)}`;
+                    subtext = `Transfer: ${t.account?.name} → ${t.to_account?.name}`;
+                }
+
+                list.innerHTML += `
+                    <div class="px-6 py-4 flex justify-between items-center hover:bg-slate-50 transition">
+                        <div class="flex items-center gap-4">
+                            <div class="text-2xl ${color}"><i class="${icon}"></i></div>
+                            <div>
+                                <p class="font-bold text-slate-800 text-sm">${t.description || t.type}</p>
+                                <p class="text-xs text-slate-400">${t.transaction_date} • ${subtext}</p>
+                            </div>
+                        </div>
+                        <span class="font-bold ${color}">${amountStr}</span>
+                    </div>
+                `;
+            });
         }
 
         function renderAccounts() {
             const container = document.getElementById('accountsList');
-            const addBtn = container.lastElementChild;
+            container.innerHTML = '';
             
-            while (container.firstChild && container.firstChild !== addBtn) {
-                container.removeChild(container.firstChild);
-            }
-            
-            if(accounts.length === 0) return;
+            state.accounts.forEach(acc => {
+                // Calc real-time balance
+                let bal = parseFloat(acc.initial_balance);
+                state.transactions.forEach(t => {
+                    const amt = parseFloat(t.amount);
+                    if(t.account_id === acc.id) {
+                        if(t.type === 'Income') bal += amt;
+                        if(t.type === 'Expense') bal -= amt;
+                        if(t.type === 'Transfer') bal -= amt;
+                    }
+                    if(t.target_account_id === acc.id && t.type === 'Transfer') {
+                        bal += amt;
+                    }
+                });
 
-            accounts.forEach(acc => {
-                let icon = 'ri-bank-card-line';
-                if(acc.type === 'Cash') icon = 'ri-money-dollar-circle-line';
-                if(acc.type === 'Savings') icon = 'ri-safe-2-line';
-                if(acc.type === 'Credit Card') icon = 'ri-bank-card-2-line';
+                const isDebt = acc.type === 'Credit';
+                const balClass = bal < 0 ? 'text-red-600' : 'text-slate-800';
+                
+                let icon = 'ri-bank-line';
+                if(acc.type === 'Credit') icon = 'ri-bank-card-line';
+                if(acc.type === 'Cash') icon = 'ri-cash-line';
 
-                const card = document.createElement('div');
-                card.className = "min-w-[280px] h-40 rounded-2xl p-6 text-white card-gradient shadow-lg flex flex-col justify-between relative overflow-hidden";
-                card.innerHTML = `
-                    <div class="absolute right-[-20px] top-[-20px] text-white opacity-10 text-9xl"><i class="${icon}"></i></div>
-                    <div class="flex justify-between items-start z-10">
-                        <div>
-                            <p class="text-xs font-bold opacity-60 uppercase tracking-wider">${acc.type}</p>
-                            <h3 class="text-lg font-bold">${acc.name}</h3>
+                container.innerHTML += `
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 text-slate-100 text-6xl opacity-20 -mr-4 -mt-4 rotate-12 pointer-events-none">
+                            <i class="${icon}"></i>
                         </div>
-                        <i class="${icon} text-xl"></i>
-                    </div>
-                    <div class="z-10">
-                        <p class="text-xs opacity-60">Balance (approx)</p>
-                        <p class="text-2xl font-bold">${formatMoney(acc.initial_balance)}</p>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">${acc.type}</p>
+                        <h3 class="text-xl font-bold text-slate-800 mb-4">${acc.name}</h3>
+                        <p class="text-2xl font-bold ${balClass}">${formatMoney(bal)}</p>
                     </div>
                 `;
-                container.insertBefore(card, addBtn);
             });
         }
 
-        function populateDropdowns() {
-            const accSelect = document.getElementById('account');
-            const toAccSelect = document.getElementById('toAccount');
+        function renderCategories() {
+            const container = document.getElementById('categoriesList');
+            container.innerHTML = '';
             
-            const html = accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
-            accSelect.innerHTML = html;
-            toAccSelect.innerHTML = html;
-            
-            updateCategoryDropdown();
+            const grouped = { 'Income': [], 'Expense': [] };
+            state.categories.forEach(c => grouped[c.type].push(c));
+
+            ['Expense', 'Income'].forEach(type => {
+                if(grouped[type].length > 0) {
+                    container.innerHTML += `<h3 class="font-bold text-slate-400 uppercase text-xs mt-6 mb-2">${type}</h3>`;
+                    grouped[type].forEach(cat => {
+                        // Calc spending this month
+                        const limit = parseFloat(cat.monthly_limit || 0);
+                        let current = 0;
+                        const currentMonth = new Date().toISOString().substring(0,7);
+                        
+                        state.transactions.forEach(t => {
+                            if(t.category_id === cat.id && t.transaction_date.startsWith(currentMonth)) {
+                                current += parseFloat(t.amount);
+                            }
+                        });
+
+                        // Progress Bar Logic
+                        let width = 0;
+                        let colorClass = 'bg-blue-600';
+                        if(limit > 0) {
+                            width = Math.min((current / limit) * 100, 100);
+                            if(type === 'Expense' && width > 90) colorClass = 'bg-red-500';
+                            if(type === 'Income') colorClass = 'bg-green-500';
+                        }
+
+                        container.innerHTML += `
+                            <div class="bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="w-3 h-3 rounded-full" style="background-color: ${cat.color}"></div>
+                                        <span class="font-bold text-slate-700">${cat.name}</span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                        <div class="${colorClass} h-1.5 rounded-full" style="width: ${width}%"></div>
+                                    </div>
+                                    <div class="flex justify-between text-xs text-slate-400 mt-1">
+                                        <span>${formatMoney(current)} spent</span>
+                                        <span>${limit > 0 ? 'Goal: ' + formatMoney(limit) : 'No limit'}</span>
+                                    </div>
+                                </div>
+                                <button onclick="deleteCategory('${cat.id}')" class="ml-4 text-slate-300 hover:text-red-500"><i class="ri-delete-bin-line"></i></button>
+                            </div>
+                        `;
+                    });
+                }
+            });
         }
 
-        function updateCategoryDropdown() {
-            const type = document.getElementById('type').value;
-            const catSelect = document.getElementById('category');
-            catSelect.innerHTML = '';
-            
-            if (type === 'Transfer') {
-                catSelect.innerHTML = '<option value="Transfer">Transfer</option>';
-            } else {
-                const filtered = userCategories.filter(c => c.type === type);
-                filtered.forEach(c => {
-                    catSelect.innerHTML += `<option value="${c.name}">${c.name}</option>`;
-                });
-            }
-        }
+        // --- FORMS & ACTIONS ---
 
-        function renderStats() {
-            const now = new Date();
-            const currentMonth = now.getMonth();
-            let inc = 0, exp = 0, save = 0;
-
-            transactions.forEach(t => {
-                const d = new Date(t.transaction_date);
-                if(d.getMonth() === currentMonth) {
-                    const amt = parseFloat(t.amount);
-                    if(t.type === 'Income') inc += amt;
-                    if(t.type === 'Expense') exp += amt;
-                    if(t.type === 'Savings') save += amt;
+        // 1. Transactions
+        function setTrxType(type) {
+            document.getElementById('trxType').value = type;
+            // Update Toggle UI
+            ['Expense','Income','Transfer'].forEach(t => {
+                const btn = document.getElementById(`type-${t}`);
+                if(t === type) {
+                    btn.classList.add('bg-white', 'shadow-sm', 'text-slate-600');
+                    btn.classList.remove('text-slate-500');
+                } else {
+                    btn.classList.remove('bg-white', 'shadow-sm', 'text-slate-600');
+                    btn.classList.add('text-slate-500');
                 }
             });
 
-            document.getElementById('monthIncome').innerText = formatMoney(inc);
-            document.getElementById('monthExpense').innerText = formatMoney(exp);
-            document.getElementById('monthSavings').innerText = formatMoney(save);
-            
-            const totalInit = accounts.reduce((sum, a) => sum + parseFloat(a.initial_balance), 0);
-            document.getElementById('totalNetWorth').innerText = formatMoney(totalInit); 
-        }
+            // Show/Hide Fields
+            const toAcc = document.getElementById('divToAccount');
+            const cat = document.getElementById('divCategory');
+            const lblFrom = document.getElementById('lblFrom');
 
-        function renderTransactions() {
-            const list = document.getElementById('transactionsList');
-            list.innerHTML = '';
-            transactions.forEach(t => {
-                let color = 'text-slate-800';
-                let icon = 'ri-bill-line';
-                let sign = '-';
-                
-                if(t.type === 'Income') { color = 'text-green-600'; icon = 'ri-arrow-down-line'; sign = '+'; }
-                else if(t.type === 'Transfer') { color = 'text-blue-500'; icon = 'ri-arrow-left-right-line'; sign = ''; }
-                else if(t.type === 'Savings') { color = 'text-purple-600'; icon = 'ri-safe-line'; sign = ''; }
-                else { color = 'text-slate-800'; icon = 'ri-shopping-bag-3-line'; }
-
-                const accName = accounts.find(a => a.id == t.account_id)?.name || 'Unknown';
-
-                const div = document.createElement('div');
-                div.className = "bg-white p-4 rounded-xl shadow-sm flex items-center justify-between";
-                div.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 text-lg">
-                            <i class="${icon}"></i>
-                        </div>
-                        <div>
-                            <p class="font-bold text-sm text-slate-800">${t.description || t.category}</p>
-                            <p class="text-xs text-slate-400">${t.transaction_date} • ${accName} • <span class="bg-slate-100 px-1 rounded">${t.category}</span></p>
-                        </div>
-                    </div>
-                    <span class="font-bold ${color}">${sign}${formatMoney(t.amount)}</span>
-                `;
-                list.appendChild(div);
-            });
-        }
-
-        function renderFavorites() {
-            const list = document.getElementById('favoritesList');
-            list.innerHTML = '';
-            favorites.forEach(f => {
-                const btn = document.createElement('button');
-                btn.className = "whitespace-nowrap px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-bold text-xs border border-blue-100 hover:bg-blue-100 transition";
-                btn.innerText = f.label;
-                btn.onclick = () => applyFavorite(f);
-                list.appendChild(btn);
-            });
-        }
-
-        // SETTINGS & ACTIONS
-        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
-        
-        async function setCurrency(symbol) {
-            currentCurrency = symbol;
-            updateCurrencyUI();
-            renderApp();
-            
-            // Save to DB
-            const user = (await supabaseClient.auth.getUser()).data.user;
-            await supabaseClient.from('user_settings').upsert({user_id: user.id, currency_symbol: symbol});
-            
-            document.getElementById('settingsModal').classList.add('hidden');
-        }
-
-        // ... (Category and Account logic same as before) ...
-        function setType(type) {
-            document.getElementById('type').value = type;
-            document.querySelectorAll('.type-btn').forEach(b => {
-                b.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
-                if(b.dataset.type === type) b.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
-            });
-            updateCategoryDropdown();
-            const toAcc = document.getElementById('toAccountField');
-            const catField = document.getElementById('categoryField');
-            if(type === 'Transfer') { toAcc.classList.remove('hidden'); catField.classList.add('hidden'); } 
-            else { toAcc.classList.add('hidden'); catField.classList.remove('hidden'); }
-        }
-
-        function openCategoryModal() {
-            document.getElementById('categoryModal').classList.remove('hidden');
-            filterCatEdit(document.getElementById('type').value === 'Transfer' ? 'Expense' : document.getElementById('type').value);
-        }
-
-        function filterCatEdit(type) {
-            currentCatEditType = type;
-            ['Expense', 'Income', 'Savings'].forEach(t => {
-                const btn = document.getElementById(`catEdit${t.substring(0,3)}`);
-                if(t === type) btn.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white transition";
-                else btn.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition";
-            });
-            renderCatEditList();
-        }
-
-        function renderCatEditList() {
-            const list = document.getElementById('catEditList');
-            list.innerHTML = '';
-            const filtered = userCategories.filter(c => c.type === currentCatEditType);
-            filtered.forEach(c => {
-                const div = document.createElement('div');
-                div.className = "flex justify-between items-center bg-slate-50 p-3 rounded-lg";
-                div.innerHTML = `<span class="text-sm font-medium">${c.name}</span><button onclick="deleteCategory(${c.id})" class="text-red-400 hover:text-red-600 font-bold px-2">×</button>`;
-                list.appendChild(div);
-            });
-        }
-
-        async function addCategory() {
-            const name = document.getElementById('newCatName').value;
-            if(!name) return;
-            const user = (await supabaseClient.auth.getUser()).data.user;
-            const { data, error } = await supabaseClient.from('user_categories').insert([{ user_id: user.id, name: name, type: currentCatEditType }]).select();
-            if(!error) { userCategories.push(data[0]); document.getElementById('newCatName').value = ''; renderCatEditList(); updateCategoryDropdown(); }
-        }
-
-        async function deleteCategory(id) {
-            if(!confirm("Remove this category?")) return;
-            const { error } = await supabaseClient.from('user_categories').delete().eq('id', id);
-            if(!error) { userCategories = userCategories.filter(c => c.id !== id); renderCatEditList(); updateCategoryDropdown(); }
-        }
-
-        async function createAccount() {
-            const name = document.getElementById('newAccName').value;
-            const type = document.getElementById('newAccType').value;
-            const bal = document.getElementById('newAccBal').value;
-            const { error } = await supabaseClient.from('accounts').insert([{ name, type, initial_balance: bal, user_id: (await supabaseClient.auth.getUser()).data.user.id }]);
-            if(!error) { document.getElementById('accountModal').classList.add('hidden'); loadData(); } else { alert(error.message); }
+            if(type === 'Transfer') {
+                toAcc.classList.remove('hidden');
+                document.getElementById('trxToAccount').setAttribute('required', 'true');
+                cat.classList.add('hidden');
+                lblFrom.innerText = "From Account";
+            } else {
+                toAcc.classList.add('hidden');
+                document.getElementById('trxToAccount').removeAttribute('required');
+                cat.classList.remove('hidden');
+                lblFrom.innerText = "Account";
+            }
+            populateDropdowns(); // Re-filter categories
         }
 
         document.getElementById('trxForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const type = document.getElementById('type').value;
-            const user = (await supabaseClient.auth.getUser()).data.user;
+            const type = document.getElementById('trxType').value;
+            
             const payload = {
-                user_id: user.id,
-                amount: document.getElementById('amount').value,
+                user_id: state.user.id,
+                amount: document.getElementById('trxAmount').value,
                 type: type,
-                account_id: document.getElementById('account').value,
-                transaction_date: document.getElementById('date').value,
-                description: document.getElementById('desc').value,
-                category: type === 'Transfer' ? 'Transfer' : document.getElementById('category').value,
-                transfer_to_account_id: type === 'Transfer' ? document.getElementById('toAccount').value : null
+                account_id: document.getElementById('trxAccount').value,
+                description: document.getElementById('trxDesc').value,
+                transaction_date: document.getElementById('trxDate').value
             };
+
+            if(type === 'Transfer') {
+                payload.target_account_id = document.getElementById('trxToAccount').value;
+                if(payload.account_id === payload.target_account_id) {
+                    alert("Cannot transfer to same account"); return;
+                }
+            } else {
+                payload.category_id = document.getElementById('trxCategory').value;
+            }
+
             const { error } = await supabaseClient.from('transactions').insert([payload]);
             if(error) alert(error.message);
-            else { e.target.reset(); setType('Expense'); document.getElementById('date').valueAsDate = new Date(); togglePanel(); loadData(); }
+            else {
+                e.target.reset();
+                document.getElementById('trxDate').valueAsDate = new Date();
+                setTrxType('Expense');
+                closeModal('trxModal');
+                refreshAllData();
+            }
         });
 
-        async function saveAsFavorite() {
-            const label = prompt("Name this template (e.g. 'Morning Coffee'):");
-            if(!label) return;
-            const user = (await supabaseClient.auth.getUser()).data.user;
-            const payload = {
-                user_id: user.id,
-                label: label,
-                amount: document.getElementById('amount').value || 0,
-                type: document.getElementById('type').value,
-                category: document.getElementById('category').value,
-                description: document.getElementById('desc').value,
-                account_id: document.getElementById('account').value
-            };
-            await supabaseClient.from('favorites').insert([payload]);
-            loadData();
+        // 2. Accounts
+        document.getElementById('accountForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { error } = await supabaseClient.from('accounts').insert([{
+                user_id: state.user.id,
+                name: document.getElementById('accName').value,
+                type: document.getElementById('accType').value,
+                initial_balance: document.getElementById('accBalance').value
+            }]);
+            if(error) alert(error.message);
+            else {
+                e.target.reset();
+                closeModal('accountModal');
+                refreshAllData();
+            }
+        });
+
+        // 3. Categories
+        document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { error } = await supabaseClient.from('categories').insert([{
+                user_id: state.user.id,
+                name: document.getElementById('catName').value,
+                type: document.getElementById('catType').value,
+                color: document.getElementById('catColor').value,
+                monthly_limit: document.getElementById('catLimit').value || 0
+            }]);
+            if(error) alert(error.message);
+            else {
+                e.target.reset();
+                closeModal('categoryModal');
+                refreshAllData();
+            }
+        });
+
+        async function deleteCategory(id) {
+            if(!confirm("Delete this category? Transactions will lose their tag.")) return;
+            await supabaseClient.from('categories').delete().eq('id', id);
+            refreshAllData();
         }
 
-        function applyFavorite(fav) {
-            setType(fav.type);
-            document.getElementById('amount').value = fav.amount;
-            document.getElementById('desc').value = fav.description;
-            if(fav.account_id) document.getElementById('account').value = fav.account_id;
-            setTimeout(() => { document.getElementById('category').value = fav.category; }, 100);
+        // --- HELPERS ---
+        function switchTab(tab) {
+            ['dashboard','accounts','categories'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('tab-active');
+                document.getElementById(`tab-${t}`).classList.add('tab-inactive');
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            document.getElementById(`tab-${tab}`).classList.remove('tab-inactive');
         }
 
-        function openAccountModal() { document.getElementById('accountModal').classList.remove('hidden'); }
-        function togglePanel() { document.getElementById('actionPanel').classList.toggle('translate-y-full'); }
+        function populateDropdowns() {
+            const accSelect = document.getElementById('trxAccount');
+            const toAccSelect = document.getElementById('trxToAccount');
+            const catSelect = document.getElementById('trxCategory');
+            const trxType = document.getElementById('trxType').value;
+
+            // Accounts
+            const accHtml = state.accounts.map(a => `<option value="${a.id}">${a.name} (${formatMoney(parseFloat(a.initial_balance))})</option>`).join('');
+            accSelect.innerHTML = accHtml;
+            toAccSelect.innerHTML = accHtml;
+
+            // Categories (Filter by Trx Type)
+            const filteredCats = state.categories.filter(c => c.type === trxType);
+            catSelect.innerHTML = filteredCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            if(filteredCats.length === 0) catSelect.innerHTML = '<option disabled>No categories found</option>';
+        }
+
+        function formatMoney(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function openTrxModal() { openModal('trxModal'); setTrxType('Expense'); } // Default to Expense
+
+        // --- EXPORT ---
+        function exportData() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Date,Type,Description,Amount,Account,To Account,Category\n";
+
+            state.transactions.forEach(t => {
+                const row = [
+                    t.transaction_date,
+                    t.type,
+                    `"${t.description || ''}"`, // Quote desc to handle commas
+                    t.amount,
+                    t.account?.name || 'Unknown',
+                    t.type === 'Transfer' ? (t.to_account?.name || '') : '',
+                    t.category?.name || ''
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "finoculus_export.csv");
+            document.body.appendChild(link);
+            link.click();
+        }
+
     </script>
 </body>
 </html>

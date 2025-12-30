@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinOculus V2</title>
+    <title>FinOculus V3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -37,7 +37,7 @@
             <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
                 <i class="ri-wallet-3-line text-3xl"></i>
             </div>
-            <h1 class="text-2xl font-bold mb-1">FinOculus V2</h1>
+            <h1 class="text-2xl font-bold mb-1">FinOculus V3</h1>
             <p class="text-slate-400 text-sm mb-6">Multi-Account Finance Tracker</p>
             <input type="email" id="email" placeholder="Email" class="w-full p-4 border rounded-xl mb-3 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500">
             <input type="password" id="password" placeholder="Password" class="w-full p-4 border rounded-xl mb-6 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500">
@@ -55,7 +55,10 @@
             <div class="flex items-center gap-2 text-slate-900 font-bold text-xl">
                 <i class="ri-wallet-3-fill text-blue-600"></i> FinOculus
             </div>
-            <button onclick="logout()" class="text-sm text-red-500 font-medium hover:bg-red-50 px-3 py-1 rounded-lg">Sign Out</button>
+            <div class="flex items-center gap-2">
+                <button onclick="openSettings()" class="text-slate-400 hover:text-slate-700 p-2"><i class="ri-settings-3-line text-xl"></i></button>
+                <button onclick="logout()" class="text-sm text-red-500 font-medium hover:bg-red-50 px-3 py-1 rounded-lg">Sign Out</button>
+            </div>
         </nav>
 
         <div class="flex-1 flex overflow-hidden">
@@ -82,19 +85,19 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                         <p class="text-xs text-slate-400 font-bold uppercase">Net Worth</p>
-                        <h3 class="text-xl font-bold text-slate-800 mt-1" id="totalNetWorth">$0.00</h3>
+                        <h3 class="text-xl font-bold text-slate-800 mt-1" id="totalNetWorth">...</h3>
                     </div>
                     <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                         <p class="text-xs text-slate-400 font-bold uppercase">Income (Mo)</p>
-                        <h3 class="text-xl font-bold text-green-600 mt-1" id="monthIncome">$0.00</h3>
+                        <h3 class="text-xl font-bold text-green-600 mt-1" id="monthIncome">...</h3>
                     </div>
                     <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                         <p class="text-xs text-slate-400 font-bold uppercase">Expense (Mo)</p>
-                        <h3 class="text-xl font-bold text-red-500 mt-1" id="monthExpense">$0.00</h3>
+                        <h3 class="text-xl font-bold text-red-500 mt-1" id="monthExpense">...</h3>
                     </div>
                     <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                         <p class="text-xs text-slate-400 font-bold uppercase">Savings (Mo)</p>
-                        <h3 class="text-xl font-bold text-blue-600 mt-1" id="monthSavings">$0.00</h3>
+                        <h3 class="text-xl font-bold text-blue-600 mt-1" id="monthSavings">...</h3>
                     </div>
                 </div>
 
@@ -141,8 +144,8 @@
 
                         <!-- Amount -->
                         <div class="relative">
-                            <span class="absolute left-0 top-2 text-slate-400 text-sm font-bold">$</span>
-                            <input type="number" id="amount" step="0.01" class="w-full text-4xl font-bold text-slate-800 border-b-2 border-slate-100 focus:border-blue-600 outline-none py-1 bg-transparent pl-4" placeholder="0.00" required>
+                            <span class="absolute left-0 top-2 text-slate-400 text-sm font-bold" id="inputCurrencyLabel">$</span>
+                            <input type="number" id="amount" step="0.01" class="w-full text-4xl font-bold text-slate-800 border-b-2 border-slate-100 focus:border-blue-600 outline-none py-1 bg-transparent pl-8" placeholder="0.00" required>
                         </div>
 
                         <!-- Date -->
@@ -162,7 +165,10 @@
 
                         <!-- Category -->
                         <div id="categoryField">
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-bold text-slate-400 uppercase">Category</label>
+                                <button type="button" onclick="openCategoryModal()" class="text-xs text-blue-600 font-bold hover:underline">Manage</button>
+                            </div>
                             <select id="category" class="w-full p-3 bg-slate-50 rounded-xl border-none text-sm outline-none font-medium"></select>
                         </div>
 
@@ -187,7 +193,7 @@
 
         <!-- ADD ACCOUNT MODAL -->
         <div id="accountModal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center">
-            <div class="bg-white p-6 rounded-2xl w-full max-w-sm m-4">
+            <div class="bg-white p-6 rounded-2xl w-full max-w-sm m-4 shadow-2xl">
                 <h3 class="font-bold text-lg mb-4">Add New Account</h3>
                 <input type="text" id="newAccName" placeholder="Account Name (e.g. Chase)" class="w-full p-3 border rounded-xl mb-3">
                 <select id="newAccType" class="w-full p-3 border rounded-xl mb-3">
@@ -205,6 +211,52 @@
             </div>
         </div>
 
+        <!-- MANAGE CATEGORIES MODAL -->
+        <div id="categoryModal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white p-6 rounded-2xl w-full max-w-sm m-4 shadow-2xl flex flex-col h-[500px]">
+                <div class="flex justify-between items-center mb-4 border-b pb-4">
+                    <h3 class="font-bold text-lg">Manage Categories</h3>
+                    <button onclick="document.getElementById('categoryModal').classList.add('hidden')" class="text-slate-400 hover:text-red-500"><i class="ri-close-line text-2xl"></i></button>
+                </div>
+                
+                <div class="flex gap-2 mb-4">
+                    <button onclick="filterCatEdit('Expense')" id="catEditExp" class="flex-1 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white">Expense</button>
+                    <button onclick="filterCatEdit('Income')" id="catEditInc" class="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-100 text-slate-500">Income</button>
+                    <button onclick="filterCatEdit('Savings')" id="catEditSav" class="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-100 text-slate-500">Savings</button>
+                </div>
+
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="newCatName" placeholder="New Category Name" class="flex-1 p-2 border rounded-lg text-sm">
+                    <button onclick="addCategory()" class="bg-green-600 text-white px-4 rounded-lg font-bold hover:bg-green-700">+</button>
+                </div>
+
+                <div id="catEditList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS MODAL -->
+        <div id="settingsModal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white p-6 rounded-2xl w-full max-w-sm m-4 shadow-2xl">
+                <h3 class="font-bold text-lg mb-4">Settings</h3>
+                
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Currency Symbol</label>
+                <div class="grid grid-cols-4 gap-2 mb-6">
+                    <button onclick="setCurrency('$')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">$</button>
+                    <button onclick="setCurrency('€')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">€</button>
+                    <button onclick="setCurrency('£')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">£</button>
+                    <button onclick="setCurrency('₹')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">₹</button>
+                    <button onclick="setCurrency('¥')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">¥</button>
+                    <button onclick="setCurrency('₽')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">₽</button>
+                    <button onclick="setCurrency('₩')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition">₩</button>
+                    <button onclick="setCurrency('Rp')" class="curr-btn p-3 rounded-xl border font-bold hover:bg-blue-50 transition text-xs">Rp</button>
+                </div>
+
+                <button onclick="document.getElementById('settingsModal').classList.add('hidden')" class="w-full bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200">Close</button>
+            </div>
+        </div>
+
     </div>
 
     <!-- LOGIC -->
@@ -213,7 +265,8 @@
         let supabaseClient;
         const CONFIG_KEY = 'finoculus_v2_config';
         
-        const CATEGORIES = {
+        // DEFAULTS
+        const DEFAULT_CATEGORIES = {
             'Expense': ['Food & Drink', 'Groceries', 'Transport', 'Utilities', 'Shopping', 'Health', 'Home', 'Entertainment', 'Education'],
             'Income': ['Salary', 'Freelance', 'Business', 'Dividends', 'Gift', 'Refund'],
             'Savings': ['Emergency Fund', 'Retirement', 'Vacation Goal', 'New Car Fund', 'General Savings', 'Investments'],
@@ -224,6 +277,9 @@
         let accounts = [];
         let transactions = [];
         let favorites = [];
+        let userCategories = [];
+        let currentCurrency = '$'; // Default
+        let currentCatEditType = 'Expense';
 
         window.onload = () => {
             const savedConfig = JSON.parse(localStorage.getItem(CONFIG_KEY));
@@ -284,19 +340,58 @@
 
         // DATA LOADING
         async function loadData() {
-            // 1. Fetch Accounts
+            const user = (await supabaseClient.auth.getUser()).data.user;
+
+            // 1. Fetch Settings
+            const setRes = await supabaseClient.from('user_settings').select('*').single();
+            if(setRes.data) {
+                currentCurrency = setRes.data.currency_symbol;
+            } else {
+                // Init settings
+                await supabaseClient.from('user_settings').insert([{user_id: user.id, currency_symbol: '$'}]);
+            }
+            updateCurrencyUI();
+
+            // 2. Fetch Accounts
             const accRes = await supabaseClient.from('accounts').select('*').order('created_at');
             if(accRes.data) accounts = accRes.data;
 
-            // 2. Fetch Favorites
+            // 3. Fetch Favorites
             const favRes = await supabaseClient.from('favorites').select('*');
             if(favRes.data) favorites = favRes.data;
 
-            // 3. Fetch Transactions
+            // 4. Fetch Transactions
             const trxRes = await supabaseClient.from('transactions').select('*').order('transaction_date', {ascending: false}).limit(100);
             if(trxRes.data) transactions = trxRes.data;
 
+            // 5. Fetch Categories
+            const catRes = await supabaseClient.from('user_categories').select('*').order('name');
+            if(catRes.data && catRes.data.length > 0) {
+                userCategories = catRes.data;
+            } else {
+                await seedCategories(user.id);
+            }
+
             renderApp();
+        }
+
+        async function seedCategories(userId) {
+            const inserts = [];
+            for (const [type, list] of Object.entries(DEFAULT_CATEGORIES)) {
+                if(type === 'Transfer') continue;
+                list.forEach(name => inserts.push({ user_id: userId, name, type }));
+            }
+            const { data, error } = await supabaseClient.from('user_categories').insert(inserts).select();
+            if(data) userCategories = data;
+        }
+
+        // HELPER
+        function formatMoney(amount) {
+            return `${currentCurrency}${parseFloat(amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function updateCurrencyUI() {
+            document.getElementById('inputCurrencyLabel').innerText = currentCurrency;
         }
 
         // RENDERING
@@ -310,29 +405,13 @@
 
         function renderAccounts() {
             const container = document.getElementById('accountsList');
-            // Calculate current balances
-            const balances = {};
-            accounts.forEach(a => balances[a.id] = parseFloat(a.initial_balance));
-            
-            // Adjust based on transactions
-            // Note: In a real production app, you might want to fetch aggregated balances from DB
-            // but for personal use, calculating on client side for the last 100-500 txns is fine
-            // IF we fetched ALL history. Since we limit fetch, this balance calc is approximate 
-            // unless we store 'current_balance' in DB and update it. 
-            // For V2 Simplicity: We will show Initial Balance + Calculated delta from fetched txns. 
-            // *Better approach for V2*: Let's rely on Client Calculation of ALL history? 
-            // Or better: Just show the account cards.
-            
-            // To make this robust without complex SQL triggers: 
-            // We'll just display the accounts and their types for now.
-            
             const addBtn = container.lastElementChild;
-            container.innerHTML = '';
             
-            if(accounts.length === 0) {
-                container.appendChild(addBtn);
-                return;
+            while (container.firstChild && container.firstChild !== addBtn) {
+                container.removeChild(container.firstChild);
             }
+            
+            if(accounts.length === 0) return;
 
             accounts.forEach(acc => {
                 let icon = 'ri-bank-card-line';
@@ -353,12 +432,11 @@
                     </div>
                     <div class="z-10">
                         <p class="text-xs opacity-60">Balance (approx)</p>
-                        <p class="text-2xl font-bold">$${parseFloat(acc.initial_balance).toLocaleString()}</p>
+                        <p class="text-2xl font-bold">${formatMoney(acc.initial_balance)}</p>
                     </div>
                 `;
-                container.appendChild(card);
+                container.insertBefore(card, addBtn);
             });
-            container.appendChild(addBtn);
         }
 
         function populateDropdowns() {
@@ -368,6 +446,23 @@
             const html = accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
             accSelect.innerHTML = html;
             toAccSelect.innerHTML = html;
+            
+            updateCategoryDropdown();
+        }
+
+        function updateCategoryDropdown() {
+            const type = document.getElementById('type').value;
+            const catSelect = document.getElementById('category');
+            catSelect.innerHTML = '';
+            
+            if (type === 'Transfer') {
+                catSelect.innerHTML = '<option value="Transfer">Transfer</option>';
+            } else {
+                const filtered = userCategories.filter(c => c.type === type);
+                filtered.forEach(c => {
+                    catSelect.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+                });
+            }
         }
 
         function renderStats() {
@@ -385,14 +480,12 @@
                 }
             });
 
-            document.getElementById('monthIncome').innerText = `$${inc.toFixed(2)}`;
-            document.getElementById('monthExpense').innerText = `$${exp.toFixed(2)}`;
-            document.getElementById('monthSavings').innerText = `$${save.toFixed(2)}`;
+            document.getElementById('monthIncome').innerText = formatMoney(inc);
+            document.getElementById('monthExpense').innerText = formatMoney(exp);
+            document.getElementById('monthSavings').innerText = formatMoney(save);
             
-            // Net Worth (Sum of all account initial balances - this is static for now)
-            // Real net worth would require summing all history.
             const totalInit = accounts.reduce((sum, a) => sum + parseFloat(a.initial_balance), 0);
-            document.getElementById('totalNetWorth').innerText = `$${totalInit.toLocaleString()}`; 
+            document.getElementById('totalNetWorth').innerText = formatMoney(totalInit); 
         }
 
         function renderTransactions() {
@@ -422,7 +515,7 @@
                             <p class="text-xs text-slate-400">${t.transaction_date} • ${accName} • <span class="bg-slate-100 px-1 rounded">${t.category}</span></p>
                         </div>
                     </div>
-                    <span class="font-bold ${color}">${sign}$${parseFloat(t.amount).toFixed(2)}</span>
+                    <span class="font-bold ${color}">${sign}${formatMoney(t.amount)}</span>
                 `;
                 list.appendChild(div);
             });
@@ -440,58 +533,88 @@
             });
         }
 
-        // ACTIONS
+        // SETTINGS & ACTIONS
+        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
+        
+        async function setCurrency(symbol) {
+            currentCurrency = symbol;
+            updateCurrencyUI();
+            renderApp();
+            
+            // Save to DB
+            const user = (await supabaseClient.auth.getUser()).data.user;
+            await supabaseClient.from('user_settings').upsert({user_id: user.id, currency_symbol: symbol});
+            
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        // ... (Category and Account logic same as before) ...
         function setType(type) {
             document.getElementById('type').value = type;
-            
-            // UI Toggle
             document.querySelectorAll('.type-btn').forEach(b => {
                 b.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
                 if(b.dataset.type === type) b.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
             });
-
-            // Update Categories
-            const catSelect = document.getElementById('category');
-            catSelect.innerHTML = '';
-            CATEGORIES[type].forEach(c => {
-                catSelect.innerHTML += `<option value="${c}">${c}</option>`;
-            });
-
-            // Toggle Transfer Fields
+            updateCategoryDropdown();
             const toAcc = document.getElementById('toAccountField');
             const catField = document.getElementById('categoryField');
-            
-            if(type === 'Transfer') {
-                toAcc.classList.remove('hidden');
-                catField.classList.add('hidden');
-            } else {
-                toAcc.classList.add('hidden');
-                catField.classList.remove('hidden');
-            }
+            if(type === 'Transfer') { toAcc.classList.remove('hidden'); catField.classList.add('hidden'); } 
+            else { toAcc.classList.add('hidden'); catField.classList.remove('hidden'); }
+        }
+
+        function openCategoryModal() {
+            document.getElementById('categoryModal').classList.remove('hidden');
+            filterCatEdit(document.getElementById('type').value === 'Transfer' ? 'Expense' : document.getElementById('type').value);
+        }
+
+        function filterCatEdit(type) {
+            currentCatEditType = type;
+            ['Expense', 'Income', 'Savings'].forEach(t => {
+                const btn = document.getElementById(`catEdit${t.substring(0,3)}`);
+                if(t === type) btn.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-blue-600 text-white transition";
+                else btn.className = "flex-1 py-2 text-xs font-bold rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition";
+            });
+            renderCatEditList();
+        }
+
+        function renderCatEditList() {
+            const list = document.getElementById('catEditList');
+            list.innerHTML = '';
+            const filtered = userCategories.filter(c => c.type === currentCatEditType);
+            filtered.forEach(c => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-50 p-3 rounded-lg";
+                div.innerHTML = `<span class="text-sm font-medium">${c.name}</span><button onclick="deleteCategory(${c.id})" class="text-red-400 hover:text-red-600 font-bold px-2">×</button>`;
+                list.appendChild(div);
+            });
+        }
+
+        async function addCategory() {
+            const name = document.getElementById('newCatName').value;
+            if(!name) return;
+            const user = (await supabaseClient.auth.getUser()).data.user;
+            const { data, error } = await supabaseClient.from('user_categories').insert([{ user_id: user.id, name: name, type: currentCatEditType }]).select();
+            if(!error) { userCategories.push(data[0]); document.getElementById('newCatName').value = ''; renderCatEditList(); updateCategoryDropdown(); }
+        }
+
+        async function deleteCategory(id) {
+            if(!confirm("Remove this category?")) return;
+            const { error } = await supabaseClient.from('user_categories').delete().eq('id', id);
+            if(!error) { userCategories = userCategories.filter(c => c.id !== id); renderCatEditList(); updateCategoryDropdown(); }
         }
 
         async function createAccount() {
             const name = document.getElementById('newAccName').value;
             const type = document.getElementById('newAccType').value;
             const bal = document.getElementById('newAccBal').value;
-            
-            const { error } = await supabaseClient.from('accounts').insert([{
-                name, type, initial_balance: bal, user_id: (await supabaseClient.auth.getUser()).data.user.id
-            }]);
-
-            if(!error) {
-                document.getElementById('accountModal').classList.add('hidden');
-                loadData();
-            } else {
-                alert(error.message);
-            }
+            const { error } = await supabaseClient.from('accounts').insert([{ name, type, initial_balance: bal, user_id: (await supabaseClient.auth.getUser()).data.user.id }]);
+            if(!error) { document.getElementById('accountModal').classList.add('hidden'); loadData(); } else { alert(error.message); }
         }
 
         document.getElementById('trxForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const type = document.getElementById('type').value;
             const user = (await supabaseClient.auth.getUser()).data.user;
-            
             const payload = {
                 user_id: user.id,
                 amount: document.getElementById('amount').value,
@@ -502,22 +625,14 @@
                 category: type === 'Transfer' ? 'Transfer' : document.getElementById('category').value,
                 transfer_to_account_id: type === 'Transfer' ? document.getElementById('toAccount').value : null
             };
-
             const { error } = await supabaseClient.from('transactions').insert([payload]);
             if(error) alert(error.message);
-            else {
-                e.target.reset();
-                setType('Expense');
-                document.getElementById('date').valueAsDate = new Date();
-                togglePanel();
-                loadData();
-            }
+            else { e.target.reset(); setType('Expense'); document.getElementById('date').valueAsDate = new Date(); togglePanel(); loadData(); }
         });
 
         async function saveAsFavorite() {
             const label = prompt("Name this template (e.g. 'Morning Coffee'):");
             if(!label) return;
-
             const user = (await supabaseClient.auth.getUser()).data.user;
             const payload = {
                 user_id: user.id,
@@ -528,7 +643,6 @@
                 description: document.getElementById('desc').value,
                 account_id: document.getElementById('account').value
             };
-            
             await supabaseClient.from('favorites').insert([payload]);
             loadData();
         }
@@ -538,17 +652,11 @@
             document.getElementById('amount').value = fav.amount;
             document.getElementById('desc').value = fav.description;
             if(fav.account_id) document.getElementById('account').value = fav.account_id;
-            // Delay category set to allow dropdown repopulation
-            setTimeout(() => {
-                document.getElementById('category').value = fav.category;
-            }, 50);
+            setTimeout(() => { document.getElementById('category').value = fav.category; }, 100);
         }
 
         function openAccountModal() { document.getElementById('accountModal').classList.remove('hidden'); }
-        function togglePanel() {
-            const p = document.getElementById('actionPanel');
-            p.classList.toggle('translate-y-full');
-        }
+        function togglePanel() { document.getElementById('actionPanel').classList.toggle('translate-y-full'); }
     </script>
 </body>
 </html>

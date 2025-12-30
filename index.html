@@ -176,7 +176,8 @@
     <!-- LOGIC -->
     <script>
         // --- 1. INITIALIZATION & CONFIG ---
-        let supabase;
+        // Change variable name to avoid conflict with library global 'supabase'
+        let supabaseClient;
         const CONFIG_KEY = 'finoculus_config';
         let chartInstance = null;
 
@@ -214,7 +215,8 @@
 
         function initSupabase(url, key) {
             try {
-                supabase = window.supabase.createClient(url, key);
+                // Initialize the client
+                supabaseClient = window.supabase.createClient(url, key);
                 checkUser();
             } catch (e) {
                 alert("Invalid Configuration. Please clear local storage and try again.");
@@ -223,7 +225,7 @@
 
         // --- 2. AUTHENTICATION ---
         async function checkUser() {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 showApp(session.user);
             } else {
@@ -239,10 +241,10 @@
 
             let result;
             if (type === 'SIGNUP') {
-                result = await supabase.auth.signUp({ email, password });
+                result = await supabaseClient.auth.signUp({ email, password });
                 if (!result.error) alert("Check your email for the confirmation link!");
             } else {
-                result = await supabase.auth.signInWithPassword({ email, password });
+                result = await supabaseClient.auth.signInWithPassword({ email, password });
             }
 
             if (result.error) {
@@ -254,7 +256,7 @@
         }
 
         async function logout() {
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             window.location.reload();
         }
 
@@ -268,7 +270,7 @@
         // --- 3. DATA OPERATIONS ---
         async function fetchData() {
             // Fetch Transactions
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('transactions')
                 .select('*')
                 .order('transaction_date', { ascending: false })
@@ -299,7 +301,7 @@
                 transaction_date: document.getElementById('date').value
             };
 
-            const { error } = await supabase.from('transactions').insert([newTrx]);
+            const { error } = await supabaseClient.from('transactions').insert([newTrx]);
 
             if (error) {
                 alert('Error adding: ' + error.message);
